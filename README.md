@@ -1,8 +1,8 @@
 # About
 
 This crate defines a `Linear<T>` type. This is a type which contents must be eventually
-consumed with the 'into_inner()' method. Failing to do so and dropping a non-consumed
-`Linear<T>` will panic.
+consumed with the `into_inner()` method. Failing to do so and dropping a non-consumed
+`Linear<T>` will result in a panic or compile error.
 
 # Features
 

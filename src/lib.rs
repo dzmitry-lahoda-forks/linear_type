@@ -9,7 +9,8 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 
 /// A Cell like struct that wraps a T and can be derefernced to &T.  This cell must never be
-/// dropped. For destruction of the inner value one has to call `.into_inner()`.
+/// dropped. For destruction of the inner value one has to destructure the linear type with
+/// `.into_inner()`. Usually this is done in manual destructors.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Linear<T>(Option<T>);
 
