@@ -8,9 +8,6 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-#[cfg(feature = "compile_error")]
-use no_panic::no_panic;
-
 /// A Cell like struct that wraps a T and can be derefernced to &T.  This cell must never be
 /// dropped. For destruction of the inner value one has to call `.into_inner()`.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -62,8 +59,9 @@ impl<T> DerefMut for Linear<T> {
 }
 
 impl<T> Drop for Linear<T> {
-    #[cfg_attr(feature = "compile_error", no_panic)]
+    #[cfg_attr(feature = "compile_error", no_panic::no_panic)]
     fn drop(&mut self) {
+        // Avoid double panic when we already panicking
         if self.0.is_some() && !std::thread::panicking() {
             panic!("linear type dropped")
         }
