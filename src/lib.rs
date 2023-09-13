@@ -35,6 +35,10 @@ impl<T> Linear<T> {
     }
 }
 
+// Safety: since we do only a thin wrapper, just delegating Send+Sync is ok.
+unsafe impl<T: Send> Send for Linear<T> {}
+unsafe impl<T: Sync> Sync for Linear<T> {}
+
 impl<T> Deref for Linear<T> {
     type Target = T;
 
