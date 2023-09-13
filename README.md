@@ -1,4 +1,12 @@
+# About
+
 This crate defines a `Linear<T>` type. This is a type which contents must be eventually
 consumed with the 'into_inner()' method. Failing to do so and dropping a non-consumed
-`Linear<T>` will panic. Future versions may implement dropping a non consumed linear type as
-compile error.
+`Linear<T>` will panic.
+
+# Features
+
+When this crates is compile with '--feature compile_error' then it will use the 'no-panic'
+crate to generate compile errors whenever a non-consumed `Linear<T>` will be dropped.
+
+Please read https://github.com/dtolnay/no-panic#caveats for details.

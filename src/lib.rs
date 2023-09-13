@@ -5,8 +5,11 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_crate_level_docs)]
 
-use std::ops::DerefMut;
 use std::ops::Deref;
+use std::ops::DerefMut;
+
+#[cfg(feature = "compile_error")]
+use no_panic::no_panic;
 
 /// A Cell like struct that wraps a T and can be derefernced to &T.  This cell must never be
 /// dropped. For destruction of the inner value one has to call `.into_inner()`.
@@ -33,9 +36,9 @@ impl<T> Linear<T> {
 }
 
 impl<T> Deref for Linear<T> {
-    type Target=T;
-    
-    fn deref(&self) -> &Self::Target{
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
         unsafe {
             // SAFETY: A program will never see a `Linear<T>` that contains None because only
             // '.into_inner()' set it to 'None' while consuming 'self'.
@@ -55,6 +58,7 @@ impl<T> DerefMut for Linear<T> {
 }
 
 impl<T> Drop for Linear<T> {
+    #[cfg_attr(feature = "compile_error", no_panic)]
     fn drop(&mut self) {
         if self.0.is_some() && !std::thread::panicking() {
             panic!("linear type dropped")
@@ -68,7 +72,7 @@ fn test_destructure() {
     let _ = linear.into_inner();
 }
 
-
+#[cfg(not(feature = "compile_error"))]
 #[test]
 #[should_panic]
 fn test_failed_destructure() {
