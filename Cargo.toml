@@ -6,7 +6,7 @@ authors = ["Christian Thäter <ct@pipapo.org>"]
 description = "Linear types for rust"
 license = "MIT OR Apache-2.0"
 repository = "https://git.pipapo.org/cehteh/linear_type.git"
-keywords = ["typesystem", "cell"]
+keywords = ["typesystem", "cell", "undropable", "nodrop"]
 categories = ["rust-patterns"]
 
 [features]

@@ -8,7 +8,7 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-/// A Cell like struct that wraps a T and can be derefernced to &T.  This cell must never be
+/// A Cell like struct that wraps a T and can be derefernced to &T.  This cell can not be
 /// dropped. For destruction of the inner value one has to destructure the linear type with
 /// `.into_inner()`. Usually this is done in manual destructors.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -22,7 +22,7 @@ impl<T> Linear<T> {
     }
 
     /// Destructures a `Linear<T>` and returns the contained value.  This must eventually be
-    /// called on any `Linear<T>`, failing to do so will panic.
+    /// called on any `Linear<T>`, failing to do so will panic or show a compile error.
     #[must_use]
     pub fn into_inner(mut self) -> T {
         unsafe {
@@ -58,7 +58,7 @@ impl<T> DerefMut for Linear<T> {
 impl<T> Drop for Linear<T> {
     #[cfg_attr(feature = "compile_error", no_panic::no_panic)]
     fn drop(&mut self) {
-        // Avoid double panic when we already panicking
+        // Avoid double panic when we are already panicking
         if self.0.is_some() && !std::thread::panicking() {
             panic!("linear type dropped")
         }
