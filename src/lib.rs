@@ -6,7 +6,6 @@
 #![warn(rustdoc::missing_crate_level_docs)]
 
 use std::ops::Deref;
-use std::ops::DerefMut;
 
 /// A Cell like struct that wraps a T and can be derefernced to &T.  This cell can not be
 /// dropped. For destruction of the inner value one has to destructure the linear type with
@@ -41,16 +40,6 @@ impl<T> Deref for Linear<T> {
             // SAFETY: A program will never see a `Linear<T>` that contains None because only
             // '.into_inner()' set it to 'None' while consuming 'self'.
             self.0.as_ref().unwrap_unchecked()
-        }
-    }
-}
-
-impl<T> DerefMut for Linear<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe {
-            // SAFETY: A program will never see a `Linear<T>` that contains None because only
-            // '.into_inner()' set it to 'None' while consuming 'self'.
-            self.0.as_mut().unwrap_unchecked()
         }
     }
 }

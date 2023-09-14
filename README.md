@@ -7,6 +7,15 @@ or compile error.
 Unlike `Pin` linear types can be moved and unlike `ManuallyDrop` linear types require to be
 eventually deconstructed unless they are forgotten with `mem::forget()`. 
 
+
+## Status
+
+This crate started on a discussion on IRC. It does not implement pure linear-type theory as
+this would require language support. Consider it as proof-of-concept. It may have some use and
+should be safe (in the rust sense) to use. Improvements and PR's are welcome. This crate will
+be somewhat in flux before a 1.0 version is released.
+
+
 ## Features
 
 When this crates is compiled with the 'compile_error' feature flag then it will use the
