@@ -5,7 +5,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_crate_level_docs)]
 
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// A Cell like struct that wraps a T and can be derefernced to &T.  This cell can not be
 /// dropped. For destruction of the inner value one has to destructure the linear type with
@@ -44,12 +44,42 @@ impl<T> Deref for Linear<T> {
     }
 }
 
+impl<T> DerefMut for Linear<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
+            // SAFETY: A program will never see a `Linear<T>` that contains None because only
+            // '.into_inner()' set it to 'None' while consuming 'self'.
+            self.0.as_mut().unwrap_unchecked()
+        }
+    }
+}
+
+impl<T: AsRef<U>, U> AsRef<U> for Linear<T> {
+    fn as_ref(&self) -> &U {
+        unsafe {
+            // SAFETY: A program will never see a `Linear<T>` that contains None because only
+            // '.into_inner()' set it to 'None' while consuming 'self'.
+            self.0.as_ref().unwrap_unchecked().as_ref()
+        }
+    }
+}
+
+impl<T: AsMut<U>, U> AsMut<U> for Linear<T> {
+    fn as_mut(&mut self) -> &mut U {
+        unsafe {
+            // SAFETY: A program will never see a `Linear<T>` that contains None because only
+            // '.into_inner()' set it to 'None' while consuming 'self'.
+            self.0.as_mut().unwrap_unchecked().as_mut()
+        }
+    }
+}
+
 impl<T> Drop for Linear<T> {
     #[cfg_attr(feature = "compile_error", no_panic::no_panic)]
     fn drop(&mut self) {
         // Avoid double panic when we are already panicking
         if self.0.is_some() && !std::thread::panicking() {
-            panic!("linear type dropped")
+            panic!("linear type dropped");
         }
     }
 }
