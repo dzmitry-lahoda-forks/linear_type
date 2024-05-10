@@ -10,7 +10,9 @@ keywords = ["typesystem", "cell", "undropable", "nodrop"]
 categories = ["rust-patterns"]
 
 [features]
+default = []
 compile_error = ["dep:no-panic"]
+drop_unchecked = []
 
 [dependencies]
 no-panic = { version = "0.1.26", optional = true}
