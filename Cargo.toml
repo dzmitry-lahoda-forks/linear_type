@@ -1,24 +1,18 @@
 [package]
 name = "linear_type"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Christian Thäter <ct@pipapo.org>"]
 description = "Linear types for rust"
 license = "MIT OR Apache-2.0"
 repository = "https://git.pipapo.org/cehteh/linear_type.git"
-keywords = ["typesystem", "cell", "undropable", "nodrop"]
+keywords = ["typesystem", "cell", "lineartype", "undropable", "nodrop"]
 categories = ["rust-patterns"]
 rust-version = "1.60.0"
 
 [features]
 default = []
 drop_unchecked = []
-
-[profile.dev]
-opt-level = 1
-
-[profile.release]
-lto = "thin"
 
 [badges]
 maintenance = { status = "actively-developed" }
