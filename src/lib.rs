@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 #[allow(unused_imports)]
 use std::mem::ManuallyDrop;
@@ -9,12 +9,12 @@ use std::mem::ManuallyDrop;
 /// dropped. For destruction of the inner value one has to destructure the linear type with
 /// `.into_inner()`. Usually this is done in manual destructors.
 #[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Linear<T>(Option<T>);
 
 #[doc(hidden)]
 #[cfg(all(not(debug_assertions), feature = "drop_unchecked"))]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Linear<T>(ManuallyDrop<T>);
 
 #[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
@@ -44,15 +44,6 @@ impl<T> Linear<T> {
             self.0.as_ref().unwrap_unchecked()
         }
     }
-
-    #[inline]
-    fn get_mut(&mut self) -> &mut T {
-        unsafe {
-            // SAFETY: A program will never see a `Linear<T>` that contains None because only
-            // '.into_inner()' set it to 'None' while consuming 'self'.
-            self.0.as_mut().unwrap_unchecked()
-        }
-    }
 }
 
 #[cfg(all(not(debug_assertions), feature = "drop_unchecked"))]
@@ -78,11 +69,6 @@ impl<T> Linear<T> {
     fn get(&self) -> &T {
         &*self.0
     }
-
-    #[inline]
-    fn get_mut(&mut self) -> &mut T {
-        &mut *self.0
-    }
 }
 
 impl<T> Deref for Linear<T> {
@@ -93,21 +79,9 @@ impl<T> Deref for Linear<T> {
     }
 }
 
-impl<T> DerefMut for Linear<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.get_mut()
-    }
-}
-
 impl<T: AsRef<U>, U> AsRef<U> for Linear<T> {
     fn as_ref(&self) -> &U {
         self.get().as_ref()
-    }
-}
-
-impl<T: AsMut<U>, U> AsMut<U> for Linear<T> {
-    fn as_mut(&mut self) -> &mut U {
-        self.get_mut().as_mut()
     }
 }
 
