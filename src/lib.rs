@@ -1,9 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![warn(clippy::cargo_common_metadata)]
-#![warn(clippy::doc_markdown)]
-#![warn(clippy::missing_panics_doc)]
-#![warn(missing_docs)]
-#![warn(rustdoc::missing_crate_level_docs)]
 
 use std::ops::{Deref, DerefMut};
 

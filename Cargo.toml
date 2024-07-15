@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://git.pipapo.org/cehteh/linear_type.git"
 keywords = ["typesystem", "cell", "undropable", "nodrop"]
 categories = ["rust-patterns"]
+rust-version = "1.60.0"
 
 [features]
 default = []
@@ -21,3 +22,18 @@ lto = "thin"
 
 [badges]
 maintenance = { status = "actively-developed" }
+
+[lints.rust]
+missing_docs = "warn"
+unknown_lints = "allow"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+missing_const_for_fn = "warn"
+cargo_common_metadata = "warn"
+doc_markdown = "warn"
+missing_panics_doc = "warn"
+
+[lints.rustdoc]
+missing_crate_level_docs = "warn"
+missing_doc_code_examples = "warn"
