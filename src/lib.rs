@@ -120,12 +120,12 @@ impl<T: AsMut<U>, U> AsMut<U> for Linear<T> {
 /// `drop_unchecked` feature is not enabled.
 #[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
 impl<T> Drop for Linear<T> {
-    #[cfg_attr(feature = "compile_error", no_panic::no_panic)]
     fn drop(&mut self) {
         // Avoid double panic when we are already panicking
-        if self.0.is_some() && !std::thread::panicking() {
-            panic!("linear type dropped");
-        }
+        assert!(
+            !std::thread::panicking() && self.0.is_none(),
+            "linear type dropped"
+        );
     }
 }
 
@@ -135,10 +135,9 @@ fn test_destructure() {
     let _ = linear.into_inner();
 }
 
-#[cfg(not(feature = "compile_error"))]
-#[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
 #[test]
-#[should_panic]
+#[cfg(all(debug_assertions, feature = "drop_unchecked"))]
+#[should_panic(expected = "linear type dropped")]
 fn test_failed_destructure() {
     let _linear = Linear::new(123);
 }

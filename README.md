@@ -16,24 +16,14 @@ should be safe (in the Rust sense) to use. Improvements and PR's are welcome. Th
 be somewhat in flux before a 1.0 version is released.
 
 
-## Features
+## Feature Flags
 
-* **compile_error**  
+* **`drop_unchecked`**  
 
-  When this crate is compiled with the 'compile_error' feature flag, it will use the
-  'no-panic' crate to generate compile errors whenever `Linear<T>` will be dropped.
-
-  Please read [https://github.com/dtolnay/no-panic#caveats][1] for details.
-
-* **drop_unchecked**  
-
-  When this crate is compiled with the 'drop_unchecked' feature flag, then, in release builds,
+  When this crate is compiled with the `drop_unchecked` feature flag, then, in release builds,
   the contained value is simply wrapped in a `ManuallyDrop` and the check if a value is
   consumed with `.into_inner()` is omitted. While this is still safe, the linear-type semantic
   is not enforced and programs may leak resources for objects that are not properly consumed
   with `.into_inner()`. This defeats the purpose of this crate and adds only a small space and
   performance improvement. It should only be enabled on programs that are thoroughly validated
   and tested when required.
-
-
-[1]: https://github.com/dtolnay/no-panic#caveats
