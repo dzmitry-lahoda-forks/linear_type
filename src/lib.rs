@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+use std::fmt::Debug;
+
 /// A linear type that must be destructured to access the inner value.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
@@ -41,6 +43,46 @@ impl<T> Linear<T> {
     /// ```
     pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> Linear<R> {
         Linear::new(f(self.into_inner()))
+    }
+}
+
+/// Additional methods for `Linear<Result<R,E>>`, only fundamental map and unwrap methods are
+/// supported. Anything beyond that needs to be handled manually.
+impl<T: Debug, E: Debug> Linear<Result<T, E>> {
+    /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<R,E>>` by applying a function
+    /// to the `Ok` value.  Retains a `Err` value.
+    pub fn map_ok<F: FnOnce(T) -> Result<R,E>, R>(self, f: F) -> Linear<Result<R, E>> {
+        match self.into_inner() {
+            Ok(t) => Linear::new(f(t)),
+            Err(e) => Linear::new(Err(e)),
+        }
+    }
+
+    /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<T, R>>` by applying a function
+    /// to the `Err` value.  Retains a `Ok` value.
+    pub fn map_err<F: FnOnce(E) -> Result<T,R>, R>(self, f: F) -> Linear<Result<T, R>> {
+        match self.into_inner() {
+            Ok(t) => Linear::new(Ok(t)),
+            Err(e) => Linear::new(f(e)),
+        }
+    }
+
+    /// Unwraps a `Linear<Result<T,E>>` into a `Linear<T>`.
+    ///
+    /// # Panics
+    ///
+    /// When the value is an `Err`.
+    pub fn unwrap_ok(self) -> Linear<T> {
+        Linear::new(self.into_inner().unwrap())
+    }
+
+    /// Unwraps a `Linear<Result<T,E>>` into a `Linear<E>`.
+    ///
+    /// # Panics
+    ///
+    /// When the value is an `Ok`.
+    pub fn unwrap_err(self) -> Linear<E> {
+        Linear::new(self.into_inner().unwrap_err())
     }
 }
 
