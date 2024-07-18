@@ -1,3 +1,4 @@
+// this is the example from the README.md
 //! This example demonstrates how to use the `linear_type` crate to model a linear state machine
 //! that reads the content of a file.
 use linear_type::Linear;
@@ -11,7 +12,7 @@ struct ReadonlyFile(File);
 #[derive(Debug)]
 struct FileContent(String);
 
-// define functions that transitions from one state to the next
+// define functions that transition from one state to the next
 fn open_file(Filename(name): Filename) -> Result<ReadonlyFile> {
     Ok(ReadonlyFile(File::open(name)?))
 }
