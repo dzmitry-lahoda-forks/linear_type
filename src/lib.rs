@@ -86,6 +86,37 @@ impl<T: Debug, E: Debug> Linear<Result<T, E>> {
     }
 }
 
+/// Additional methods for `Linear<Option<T>>`, only fundamental methods are supported.
+/// Anything beyond that needs to be handled manually.
+impl<T> Linear<Option<T>> {
+    /// Transforms a `Linear<Option<T>>` into `Linear<Option<R>>` by applying a function
+    /// to the `Some` value.  Retains a `None` value.
+    pub fn map_some<F: FnOnce(T) -> Option<R>, R>(self, f: F) -> Linear<Option<R>> {
+        match self.into_inner() {
+            Some(t) => Linear::new(f(t)),
+            None => Linear::new(None),
+        }
+    }
+
+    /// Transforms a `Linear<Option<T>>` into `Linear<Option<T>>` by applying a function
+    /// to the `None` value.  Retains a `Some` value.
+    pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Self {
+        match self.into_inner() {
+            inner @ Some(_) => Linear::new(inner),
+            None => Linear::new(f()),
+        }
+    }
+
+    /// Unwraps a `Linear<Some<T>>` into a `Linear<T>`.
+    ///
+    /// # Panics
+    ///
+    /// When the value is `None`.
+    pub fn unwrap_some(self) -> Linear<T> {
+        Linear::new(self.into_inner().unwrap())
+    }
+}
+
 /// A marker type that can not be dropped.
 ///
 /// # Panics
