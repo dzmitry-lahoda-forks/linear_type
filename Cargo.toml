@@ -1,6 +1,6 @@
 [package]
 name = "linear_type"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 authors = ["Christian Thäter <ct@pipapo.org>"]
 description = "Linear types for rust"
