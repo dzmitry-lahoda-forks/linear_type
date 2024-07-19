@@ -31,9 +31,9 @@ be somewhat in flux before a 1.0 version is released.
 
   When this crate is compiled with the `drop_unchecked` feature flag, then, in release builds,
   dropping a linear type will not panic as intended. The linear-type semantic is not
-  enforced. This defeats the purpose of this crate and adds only a small space and performance
-  improvement. It should only be enabled on programs that are thoroughly validated and tested
-  when required.
+  enforced. This defeats the purpose of this crate. it adds only a small space and performance
+  improvement. It should considered to be UB and should only be enabled on programs that are
+  thoroughly validated and tested when required.
 
 
 # Example

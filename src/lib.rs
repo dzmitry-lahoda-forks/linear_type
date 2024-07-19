@@ -1,16 +1,16 @@
 #![doc = include_str!("../README.md")]
 
-use std::fmt::Debug;
+use std::{fmt::Debug, mem::ManuallyDrop};
 
 /// A linear type that must be destructured to access the inner value.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
-pub struct Linear<T>(T, NoDrop);
+pub struct Linear<T>(ManuallyDrop<T>, NoDrop);
 
 impl<T> Linear<T> {
     /// Creates a new linear type.
     pub const fn new(inner: T) -> Self {
-        Self(inner, NoDrop)
+        Self(ManuallyDrop::new(inner), NoDrop)
     }
 
     /// Destructures the linear type and returns the inner type.  This must eventually be called on
@@ -27,7 +27,7 @@ impl<T> Linear<T> {
     pub fn into_inner(self) -> T {
         let Linear(t, n) = self;
         std::mem::forget(n);
-        t
+        ManuallyDrop::into_inner(t)
     }
 
     /// Transforms one linear type to another linear type. The inner value is passed to the
