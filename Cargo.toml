@@ -13,6 +13,7 @@ rust-version = "1.60.0"
 [features]
 default = []
 drop_unchecked = []
+semipure = []
 
 [badges]
 maintenance = { status = "actively-developed" }

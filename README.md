@@ -35,6 +35,12 @@ be somewhat in flux before a 1.0 version is released.
   improvement. It should considered to be UB and should only be enabled on programs that are
   thoroughly validated and tested when required.
 
+* **`semipure`**
+
+  When this crate is compiled with the `semipure` feature flag, then the `Linear<T>` type will
+  implement the `get_ref()` method. This method will return a reference to the inner
+  value. This is useful when you want to borrow the inner value without consuming the linear
+  type. This feature is not recommended as it may break the linear type semantics.
 
 # Example
 
@@ -76,3 +82,5 @@ fn main() {
     assert!(text.contains("# Example"));
 }
 ```
+
+

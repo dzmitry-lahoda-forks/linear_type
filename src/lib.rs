@@ -13,6 +13,30 @@ impl<T> Linear<T> {
         Self(ManuallyDrop::new(inner), NoDrop)
     }
 
+    #[cfg(any(doc, feature = "semipure"))]
+    /// Returns a reference to the inner value.
+    ///
+    /// In a pure linear type-system even immutable access to the inner value is not available
+    /// because this may leak unwanted interior mutability or enable to clone the inner which
+    /// would be impure (in a linear type system). When one doesn't do either then the rust
+    /// type system/lifetimes are strong enough to be pure. This method is only available when
+    /// one defines the `semipure` feature. It's then the decision of the programmer not to use
+    /// any interior mutability/cloning or bend the rules and do something impure to make this
+    /// crate more convenient to use.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// let linear = Linear::new(123);
+    /// # #[cfg(any(doc, feature = "semipure"))]
+    /// assert_eq!(linear.get_ref(), &123);
+    /// # linear.into_inner();
+    /// ```
+    pub fn get_ref(&self) -> &T {
+        &self.0
+    }
+
     /// Destructures the linear type and returns the inner type.  This must eventually be called on
     /// any linear type, failing to do so will panic.
     ///
