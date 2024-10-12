@@ -75,7 +75,7 @@ impl<T> Linear<T> {
 impl<T: Debug, E: Debug> Linear<Result<T, E>> {
     /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<R,E>>` by applying a function
     /// to the `Ok` value.  Retains a `Err` value.
-    pub fn map_ok<F: FnOnce(T) -> Result<R,E>, R>(self, f: F) -> Linear<Result<R, E>> {
+    pub fn map_ok<F: FnOnce(T) -> Result<R, E>, R>(self, f: F) -> Linear<Result<R, E>> {
         match self.into_inner() {
             Ok(t) => Linear::new(f(t)),
             Err(e) => Linear::new(Err(e)),
@@ -84,7 +84,7 @@ impl<T: Debug, E: Debug> Linear<Result<T, E>> {
 
     /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<T, R>>` by applying a function
     /// to the `Err` value.  Retains a `Ok` value.
-    pub fn map_err<F: FnOnce(E) -> Result<T,R>, R>(self, f: F) -> Linear<Result<T, R>> {
+    pub fn map_err<F: FnOnce(E) -> Result<T, R>, R>(self, f: F) -> Linear<Result<T, R>> {
         match self.into_inner() {
             Ok(t) => Linear::new(Ok(t)),
             Err(e) => Linear::new(f(e)),
