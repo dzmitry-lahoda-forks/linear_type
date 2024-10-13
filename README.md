@@ -20,9 +20,10 @@ eventually deconstructed and consumed.
 ## Status
 
 This crate started with a discussion on IRC. It does not implement pure linear-type theory as
-this would require language support. Consider it as proof-of-concept. It may have some use and
-should be safe (in the Rust sense) to use. Improvements and PR's are welcome. This crate will
-be somewhat in flux before a 1.0 version is released.
+this would require language support. Consider it as proof-of-concept. Most notably using
+`mem::forget()` on a linear type will break the linear type semantics. This crate can not
+prevent this. It may have some use and should be safe (in the Rust sense) to use. Improvements
+and PR's are welcome. This crate will be somewhat in flux before a 1.0 version is released.
 
 
 ## Feature Flags

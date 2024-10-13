@@ -3,12 +3,25 @@
 use std::{fmt::Debug, mem::ManuallyDrop};
 
 /// A linear type that must be destructured to access the inner value.
+///
+/// Linear types are a way to enforce that a value is used exactly once.
+/// This is useful in cases where you want to ensure that a value propagates
+/// into a final state which eventually gets consumed.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
 pub struct Linear<T>(ManuallyDrop<T>, NoDrop);
 
 impl<T> Linear<T> {
     /// Creates a new linear type.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// let linear = Linear::new(123);
+    /// // a linear type must be used or destructured eventually
+    /// let _ = linear.into_inner();
+    /// ```
     pub const fn new(inner: T) -> Self {
         Self(ManuallyDrop::new(inner), NoDrop)
     }
@@ -38,7 +51,7 @@ impl<T> Linear<T> {
     }
 
     /// Destructures the linear type and returns the inner type.  This must eventually be called on
-    /// any linear type, failing to do so will panic.
+    /// any linear type, failing to do so will panic when the linear type is dropped.
     ///
     /// # Example
     ///
@@ -70,11 +83,20 @@ impl<T> Linear<T> {
     }
 }
 
-/// Additional methods for `Linear<Result<R,E>>`, only fundamental map and unwrap methods are
-/// supported. Anything beyond that needs to be handled manually.
-impl<T: Debug, E: Debug> Linear<Result<T, E>> {
+/// Additional map methods for `Linear<Result<R,E>>`
+impl<T, E> Linear<Result<T, E>> {
     /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<R,E>>` by applying a function
     /// to the `Ok` value.  Retains a `Err` value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// # use std::io::Read;
+    /// let result = Linear::new(std::fs::File::open("Cargo.toml"));
+    /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
+    /// assert!(mapped.unwrap_ok().into_inner().contains("linear_type"));
+    /// ```
     pub fn map_ok<F: FnOnce(T) -> Result<R, E>, R>(self, f: F) -> Linear<Result<R, E>> {
         match self.into_inner() {
             Ok(t) => Linear::new(f(t)),
@@ -90,7 +112,10 @@ impl<T: Debug, E: Debug> Linear<Result<T, E>> {
             Err(e) => Linear::new(f(e)),
         }
     }
+}
 
+/// Additional `unwrap_ok()` method for `Linear<Result<T,E>>` where E is `Debug`.
+impl<T, E: Debug> Linear<Result<T, E>> {
     /// Unwraps a `Linear<Result<T,E>>` into a `Linear<T>`.
     ///
     /// # Panics
@@ -99,7 +124,10 @@ impl<T: Debug, E: Debug> Linear<Result<T, E>> {
     pub fn unwrap_ok(self) -> Linear<T> {
         Linear::new(self.into_inner().unwrap())
     }
+}
 
+/// Additional `unwrap_err()` method for `Linear<Result<T,E>>` where T is `Debug`.
+impl<T: Debug, E> Linear<Result<T, E>> {
     /// Unwraps a `Linear<Result<T,E>>` into a `Linear<E>`.
     ///
     /// # Panics
@@ -115,6 +143,15 @@ impl<T: Debug, E: Debug> Linear<Result<T, E>> {
 impl<T> Linear<Option<T>> {
     /// Transforms a `Linear<Option<T>>` into `Linear<Option<R>>` by applying a function
     /// to the `Some` value.  Retains a `None` value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// let option = Linear::new(Some(123));
+    /// let mapped = option.map_some(|x| Some(x.to_string()));
+    /// assert_eq!(mapped.unwrap_some().into_inner(), "123");
+    /// ```
     pub fn map_some<F: FnOnce(T) -> Option<R>, R>(self, f: F) -> Linear<Option<R>> {
         match self.into_inner() {
             Some(t) => Linear::new(f(t)),
@@ -124,6 +161,15 @@ impl<T> Linear<Option<T>> {
 
     /// Transforms a `Linear<Option<T>>` into `Linear<Option<T>>` by applying a function
     /// to the `None` value.  Retains a `Some` value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// let option = Linear::new(None);
+    /// let mapped = option.or_else(|| Some(123));
+    /// assert_eq!(mapped.unwrap_some().into_inner(), 123);
+    /// ```
     pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Self {
         match self.into_inner() {
             inner @ Some(_) => Linear::new(inner),
@@ -136,6 +182,15 @@ impl<T> Linear<Option<T>> {
     /// # Panics
     ///
     /// When the value is `None`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// let option = Linear::new(Some(123));
+    /// let unwrapped = option.unwrap_some();
+    /// assert_eq!(unwrapped.into_inner(), 123);
+    /// ```
     pub fn unwrap_some(self) -> Linear<T> {
         Linear::new(self.into_inner().unwrap())
     }
