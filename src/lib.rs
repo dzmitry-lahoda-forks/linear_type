@@ -198,10 +198,13 @@ impl<T> Linear<Option<T>> {
 
 /// A marker type that can not be dropped.
 ///
-/// # Panics
+/// # Panics or Aborts
 ///
-/// When the `drop_unchecked` feature is not enabled, this type will panic when dropped.
-/// This is to ensure that linear types are not dropped and must be destructured manually.
+/// When the `drop_unchecked` feature is not enabled, this type will panic in tests when dropped
+/// or abort in non-test builds. This is to ensure that linear types are not dropped and must be
+/// destructured manually. Dropping a linear type is considered a programming error and
+/// must not happen. The panic in test builds is only there to permit completion of the test suite.
+///
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
 struct NoDrop;
@@ -210,12 +213,20 @@ struct NoDrop;
 /// `drop_unchecked` feature is not enabled.
 #[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
 impl Drop for NoDrop {
+    #[cfg(test)]
     fn drop(&mut self) {
         // Avoid double panic when we are already panicking
         #[allow(clippy::manual_assert)]
         if !std::thread::panicking() {
             panic!("linear type dropped");
         }
+    }
+    #[cfg(not(test))]
+    fn drop(&mut self) {
+        // be nice in debug builds and tell why we are aborting
+        #[cfg(debug_assertions)]
+        eprintln!("linear type dropped");
+        std::process::abort();
     }
 }
 
