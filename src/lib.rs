@@ -67,6 +67,25 @@ impl<T> Linear<T> {
         ManuallyDrop::into_inner(t)
     }
 
+    /// Consumes and destroys the wrapped value. This is like `into_inner()` and them dropping
+    /// the returned value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::Linear;
+    /// let linear = Linear::new(123);
+    /// linear.destroy();
+    /// ```
+    #[inline]
+    pub fn destroy(mut self) {
+        unsafe {
+            ManuallyDrop::drop(&mut self.0);
+        }
+        let Linear(_, n) = self;
+        std::mem::forget(n);
+    }
+
     /// Transforms one linear type to another linear type. The inner value is passed to the
     /// closure and the return value is wrapped in a `Linear`.
     ///

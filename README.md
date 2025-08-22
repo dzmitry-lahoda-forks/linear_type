@@ -8,6 +8,7 @@ There are only a few methods you can use on a linear type.
 
 * `new()` creates a new linear type.
 * `into_inner()` destructures a object returning the inner value as non linear type.
+* `destroy()` manual drop method, consumes and destroys the wrapped `T`.
 * `map()` applies a `FnOnce` with the destructured inner type as parameter yielding another
   linear type.
 * Some variants of `map()` to handle `Linear<Result<T,E>>` and `Linear<Option<T>>`.
