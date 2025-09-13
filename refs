@@ -2,3 +2,6 @@
 d4b16cd94f266cd5dd5b88cfa9b6dc1da1891287 refs/heads/master
 131bbff091bd0999889817242c6159bdedc399d8 refs/rad/id
 131bbff091bd0999889817242c6159bdedc399d8 refs/rad/root
+83bd8fb051f20c294ab7a16b97d33527a0892d2a refs/tags/v0.7.0
+f658ed4d57af0d076de51b67e0c1e24820f89226 refs/tags/v0.7.1
+c88ed56df4d644e1b71b37ceb55eda35e9f5a3ad refs/tags/v0.7.2
