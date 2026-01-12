@@ -127,12 +127,56 @@ impl<T, U> Linear<T, U> {
     /// let string = number.map(|x| x.to_string());
     /// assert_eq!(string.into_inner(), "123");
     /// ```
-    pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> Linear<R, Self> {
-        Self::transpose(f(self.into_inner()))
+    pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> Linear<R, Map<F, Self>> {
+        Linear(ManuallyDrop::new(f(self.into_inner())), NoDrop, PhantomData)
     }
 
-    const fn transpose<R>(r: R) -> Linear<R, Self> {
+    #[inline]
+    const fn transpose<R, S>(r: R) -> Linear<R, S> {
         Linear(ManuallyDrop::new(r), NoDrop, PhantomData)
+    }
+
+    /// Splices a linear type into a two-tuple of linear types. The caller has to ensure that
+    /// the resulting values are independent and don't share any observable state.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::*;
+    /// let foobar = new_linear!("foobar".to_string());
+    /// let (foo, bar) = foobar.splice(|mut foo| {let bar = foo.split_off(3); (foo, bar)});
+    /// assert_eq!(foo.into_inner(), "foo");
+    /// assert_eq!(bar.into_inner(), "bar");
+    /// ```
+    pub fn splice<F: FnOnce(T) -> (R, S), R, S>(
+        self,
+        f: F,
+    ) -> (
+        Linear<R, SpliceLeft<F, Self>>,
+        Linear<S, SpliceRight<F, Self>>,
+    ) {
+        let (r, s) = f(self.into_inner());
+        (Self::transpose(r), Self::transpose(s))
+    }
+
+    /// Merges two linear type into one.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::*;
+    /// let foo = new_linear!("foo".to_string());
+    /// let bar = new_linear!("bar".to_string());
+    /// let foobar = foo.merge(bar, |foo, bar| { foo + &bar });
+    /// println!("{}", std::any::type_name_of_val(&foobar));
+    /// assert_eq!(foobar.into_inner(), "foobar");
+    /// ```
+    pub fn merge<F: FnOnce(T, T2) -> R, R, T2, U2>(
+        self,
+        other: Linear<T2, U2>,
+        f: F,
+    ) -> Linear<R, Merge<F, Self, Linear<T2, U2>>> {
+        Self::transpose(f(self.into_inner(), other.into_inner()))
     }
 }
 
@@ -150,7 +194,10 @@ impl<T, E, U> Linear<Result<T, E>, U> {
     /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
     /// assert!(mapped.unwrap_ok().into_inner().contains("linear_type"));
     /// ```
-    pub fn map_ok<F: FnOnce(T) -> Result<R, E>, R>(self, f: F) -> Linear<Result<R, E>, Self> {
+    pub fn map_ok<F: FnOnce(T) -> Result<R, E>, R>(
+        self,
+        f: F,
+    ) -> Linear<Result<R, E>, MapOk<F, Self>> {
         match self.into_inner() {
             Ok(t) => Self::transpose(f(t)),
             Err(e) => Self::transpose(Err(e)),
@@ -159,10 +206,13 @@ impl<T, E, U> Linear<Result<T, E>, U> {
 
     /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<T, R>>` by applying a function
     /// to the `Err` value.  Retains a `Ok` value.
-    pub fn map_err<F: FnOnce(E) -> Result<T, R>, R>(self, f: F) -> Linear<Result<T, R>, Self> {
+    pub fn map_err<F: FnOnce(E) -> Result<T, R>, R>(
+        self,
+        f: F,
+    ) -> Linear<Result<T, R>, MapErr<F, Self>> {
         match self.into_inner() {
-            Ok(t) => Linear::transpose(Ok(t)),
-            Err(e) => Linear::transpose(f(e)),
+            Ok(t) => Self::transpose(Ok(t)),
+            Err(e) => Self::transpose(f(e)),
         }
     }
 }
@@ -174,8 +224,8 @@ impl<T, E: Debug, U> Linear<Result<T, E>, U> {
     /// # Panics
     ///
     /// When the value is an `Err`.
-    pub fn unwrap_ok(self) -> Linear<T, Self> {
-        Linear::transpose(self.into_inner().unwrap())
+    pub fn unwrap_ok(self) -> Linear<T, UnwrapOk<Self>> {
+        Self::transpose(self.into_inner().unwrap())
     }
 }
 
@@ -186,8 +236,8 @@ impl<T: Debug, E, U> Linear<Result<T, E>, U> {
     /// # Panics
     ///
     /// When the value is an `Ok`.
-    pub fn unwrap_err(self) -> Linear<E, Self> {
-        Linear::transpose(self.into_inner().unwrap_err())
+    pub fn unwrap_err(self) -> Linear<E, UnwrapErr<Self>> {
+        Self::transpose(self.into_inner().unwrap_err())
     }
 }
 
@@ -205,10 +255,13 @@ impl<T, U> Linear<Option<T>, U> {
     /// let mapped = option.map_some(|x| Some(x.to_string()));
     /// assert_eq!(mapped.unwrap_some().into_inner(), "123");
     /// ```
-    pub fn map_some<F: FnOnce(T) -> Option<R>, R>(self, f: F) -> Linear<Option<R>, Self> {
+    pub fn map_some<F: FnOnce(T) -> Option<R>, R>(
+        self,
+        f: F,
+    ) -> Linear<Option<R>, MapSome<F, Self>> {
         match self.into_inner() {
-            Some(t) => Linear::transpose(f(t)),
-            None => Linear::transpose(None),
+            Some(t) => Self::transpose(f(t)),
+            None => Self::transpose(None),
         }
     }
 
@@ -223,10 +276,10 @@ impl<T, U> Linear<Option<T>, U> {
     /// let mapped = option.or_else(|| Some(123));
     /// assert_eq!(mapped.unwrap_some().into_inner(), 123);
     /// ```
-    pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Linear<Option<T>, Self> {
+    pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Linear<Option<T>, OrElse<F, Self>> {
         match self.into_inner() {
-            inner @ Some(_) => Linear::transpose(inner),
-            None => Linear::transpose(f()),
+            inner @ Some(_) => Self::transpose(inner),
+            None => Self::transpose(f()),
         }
     }
 
@@ -244,10 +297,34 @@ impl<T, U> Linear<Option<T>, U> {
     /// let unwrapped = option.unwrap_some();
     /// assert_eq!(unwrapped.into_inner(), 123);
     /// ```
-    pub fn unwrap_some(self) -> Linear<T, Self> {
-        Linear::transpose(self.into_inner().unwrap())
+    pub fn unwrap_some(self) -> Linear<T, UnwrapSome<Self>> {
+        Self::transpose(self.into_inner().unwrap())
     }
 }
+
+// All operations have Markers to construct unique types
+#[doc(hidden)]
+pub struct Map<F, M>(PhantomData<F>, PhantomData<M>);
+#[doc(hidden)]
+pub struct MapOk<F, R>(PhantomData<F>, PhantomData<R>);
+#[doc(hidden)]
+pub struct MapErr<F, E>(PhantomData<F>, PhantomData<E>);
+#[doc(hidden)]
+pub struct MapSome<F, S>(PhantomData<F>, PhantomData<S>);
+#[doc(hidden)]
+pub struct UnwrapOk<R>(PhantomData<R>);
+#[doc(hidden)]
+pub struct UnwrapErr<E>(PhantomData<E>);
+#[doc(hidden)]
+pub struct UnwrapSome<S>(PhantomData<S>);
+#[doc(hidden)]
+pub struct OrElse<F, E>(PhantomData<F>, PhantomData<E>);
+#[doc(hidden)]
+pub struct SpliceLeft<F, L>(PhantomData<F>, PhantomData<L>);
+#[doc(hidden)]
+pub struct SpliceRight<F, R>(PhantomData<F>, PhantomData<R>);
+#[doc(hidden)]
+pub struct Merge<F, L, R>(PhantomData<F>, PhantomData<L>, PhantomData<R>);
 
 /// A marker type that can not be dropped.
 ///
