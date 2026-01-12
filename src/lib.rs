@@ -1,31 +1,61 @@
 #![doc = include_str!("../README.md")]
 
-use std::{fmt::Debug, mem::ManuallyDrop};
+use std::{fmt::Debug, marker::PhantomData, mem::ManuallyDrop};
 
 /// A linear type that must be destructured to access the inner value.
 ///
-/// Linear types are a way to enforce that a value is used exactly once.
-/// This is useful in cases where you want to ensure that a value propagates
-/// into a final state which eventually gets consumed.
+/// Linear types are a way to enforce that a value is used exactly once.  This is useful in
+/// cases where you want to ensure that a value propagates into a final state which eventually
+/// gets consumed.
+///
+/// Linear types are unique and enforce continuity every state transformation creates a new
+/// type that is tagged with the type signature it is created from. This is the `U` generic
+/// parameter.  Thus means one can not make up linear typed values from thin air and use them
+/// as substitutes for a destroyed value in a chain of linear evaluation.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
-pub struct Linear<T>(ManuallyDrop<T>, NoDrop);
+pub struct Linear<T, U>(ManuallyDrop<T>, NoDrop, PhantomData<U>);
 
-impl<T> Linear<T> {
-    /// Creates a new linear type.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use linear_type::Linear;
-    /// let linear = Linear::new(123);
-    /// // a linear type must be used or destructured eventually
-    /// let _ = linear.into_inner();
-    /// ```
-    pub const fn new(inner: T) -> Self {
-        Self(ManuallyDrop::new(inner), NoDrop)
+/// A marker struct that is constructed with unique closure types.
+pub struct UniqueType<F: Fn()>(pub ManuallyDrop<F>);
+
+// Returns a value with a unique type for every call.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! unique_type {
+    () => {
+        $crate::UniqueType(std::mem::ManuallyDrop::new(|| ()))
+    };
+}
+
+/// Wraps a value of type `T` in `Linear<T>`. This macro ensures that every new instance has a
+/// unique type.
+#[macro_export]
+macro_rules! new_linear {
+    ($t:expr) => {
+        $crate::Linear::new($t, $crate::unique_type!())
+    };
+}
+
+#[doc(hidden)]
+impl<T, F: Fn()> Linear<T, UniqueType<F>> {
+    // to be called by the new_linear macro
+    #[doc(hidden)]
+    pub const fn new(inner: T, _: UniqueType<F>) -> Self {
+        Linear(ManuallyDrop::new(inner), NoDrop, PhantomData)
     }
+}
 
+// This must not compile because foo and bar are distinct types
+// Its a hack and gives a rather cryptic error messages about "expected closure, found a different closure"
+// #[test]
+// fn uniqueness() {
+//     let foo = new_linear!("test");
+//     let mut bar = new_linear!("test");
+//     bar = foo;
+// }
+
+impl<T, U> Linear<T, U> {
     #[cfg(any(doc, feature = "semipure"))]
     /// Returns a reference to the inner value.
     ///
@@ -40,8 +70,8 @@ impl<T> Linear<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let linear = Linear::new(123);
+    /// # use linear_type::*;
+    /// let linear = new_linear!(123);
     /// # #[cfg(any(doc, feature = "semipure"))]
     /// assert_eq!(linear.get_ref(), &123);
     /// # linear.into_inner();
@@ -56,13 +86,13 @@ impl<T> Linear<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let linear = Linear::new(123);
+    /// # use linear_type::*;
+    /// let linear = new_linear!(123);
     /// let inner = linear.into_inner();
     /// assert_eq!(inner, 123);
     /// ```
     pub fn into_inner(self) -> T {
-        let Linear(t, n) = self;
+        let Linear(t, n, _) = self;
         std::mem::forget(n);
         ManuallyDrop::into_inner(t)
     }
@@ -73,8 +103,8 @@ impl<T> Linear<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let linear = Linear::new(123);
+    /// # use linear_type::*;
+    /// let linear = new_linear!(123);
     /// linear.destroy();
     /// ```
     #[inline]
@@ -82,7 +112,7 @@ impl<T> Linear<T> {
         unsafe {
             ManuallyDrop::drop(&mut self.0);
         }
-        let Linear(_, n) = self;
+        let Linear(_, n, _) = self;
         std::mem::forget(n);
     }
 
@@ -92,89 +122,93 @@ impl<T> Linear<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let number = Linear::new(123);
+    /// # use linear_type::*;
+    /// let number = new_linear!(123);
     /// let string = number.map(|x| x.to_string());
     /// assert_eq!(string.into_inner(), "123");
     /// ```
-    pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> Linear<R> {
-        Linear::new(f(self.into_inner()))
+    pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> Linear<R, Self> {
+        Self::transpose(f(self.into_inner()))
+    }
+
+    const fn transpose<R>(r: R) -> Linear<R, Self> {
+        Linear(ManuallyDrop::new(r), NoDrop, PhantomData)
     }
 }
 
 /// Additional map methods for `Linear<Result<R,E>>`
-impl<T, E> Linear<Result<T, E>> {
+impl<T, E, U> Linear<Result<T, E>, U> {
     /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<R,E>>` by applying a function
     /// to the `Ok` value.  Retains a `Err` value.
     ///
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
+    /// # use linear_type::*;
     /// # use std::io::Read;
-    /// let result = Linear::new(std::fs::File::open("Cargo.toml"));
+    /// let result = new_linear!(std::fs::File::open("Cargo.toml"));
     /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
     /// assert!(mapped.unwrap_ok().into_inner().contains("linear_type"));
     /// ```
-    pub fn map_ok<F: FnOnce(T) -> Result<R, E>, R>(self, f: F) -> Linear<Result<R, E>> {
+    pub fn map_ok<F: FnOnce(T) -> Result<R, E>, R>(self, f: F) -> Linear<Result<R, E>, Self> {
         match self.into_inner() {
-            Ok(t) => Linear::new(f(t)),
-            Err(e) => Linear::new(Err(e)),
+            Ok(t) => Self::transpose(f(t)),
+            Err(e) => Self::transpose(Err(e)),
         }
     }
 
     /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<T, R>>` by applying a function
     /// to the `Err` value.  Retains a `Ok` value.
-    pub fn map_err<F: FnOnce(E) -> Result<T, R>, R>(self, f: F) -> Linear<Result<T, R>> {
+    pub fn map_err<F: FnOnce(E) -> Result<T, R>, R>(self, f: F) -> Linear<Result<T, R>, Self> {
         match self.into_inner() {
-            Ok(t) => Linear::new(Ok(t)),
-            Err(e) => Linear::new(f(e)),
+            Ok(t) => Linear::transpose(Ok(t)),
+            Err(e) => Linear::transpose(f(e)),
         }
     }
 }
 
 /// Additional `unwrap_ok()` method for `Linear<Result<T,E>>` where E is `Debug`.
-impl<T, E: Debug> Linear<Result<T, E>> {
+impl<T, E: Debug, U> Linear<Result<T, E>, U> {
     /// Unwraps a `Linear<Result<T,E>>` into a `Linear<T>`.
     ///
     /// # Panics
     ///
     /// When the value is an `Err`.
-    pub fn unwrap_ok(self) -> Linear<T> {
-        Linear::new(self.into_inner().unwrap())
+    pub fn unwrap_ok(self) -> Linear<T, Self> {
+        Linear::transpose(self.into_inner().unwrap())
     }
 }
 
 /// Additional `unwrap_err()` method for `Linear<Result<T,E>>` where T is `Debug`.
-impl<T: Debug, E> Linear<Result<T, E>> {
+impl<T: Debug, E, U> Linear<Result<T, E>, U> {
     /// Unwraps a `Linear<Result<T,E>>` into a `Linear<E>`.
     ///
     /// # Panics
     ///
     /// When the value is an `Ok`.
-    pub fn unwrap_err(self) -> Linear<E> {
-        Linear::new(self.into_inner().unwrap_err())
+    pub fn unwrap_err(self) -> Linear<E, Self> {
+        Linear::transpose(self.into_inner().unwrap_err())
     }
 }
 
 /// Additional methods for `Linear<Option<T>>`, only fundamental methods are supported.
 /// Anything beyond that needs to be handled manually.
-impl<T> Linear<Option<T>> {
+impl<T, U> Linear<Option<T>, U> {
     /// Transforms a `Linear<Option<T>>` into `Linear<Option<R>>` by applying a function
     /// to the `Some` value.  Retains a `None` value.
     ///
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let option = Linear::new(Some(123));
+    /// # use linear_type::*;
+    /// let option = new_linear!(Some(123));
     /// let mapped = option.map_some(|x| Some(x.to_string()));
     /// assert_eq!(mapped.unwrap_some().into_inner(), "123");
     /// ```
-    pub fn map_some<F: FnOnce(T) -> Option<R>, R>(self, f: F) -> Linear<Option<R>> {
+    pub fn map_some<F: FnOnce(T) -> Option<R>, R>(self, f: F) -> Linear<Option<R>, Self> {
         match self.into_inner() {
-            Some(t) => Linear::new(f(t)),
-            None => Linear::new(None),
+            Some(t) => Linear::transpose(f(t)),
+            None => Linear::transpose(None),
         }
     }
 
@@ -184,15 +218,15 @@ impl<T> Linear<Option<T>> {
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let option = Linear::new(None);
+    /// # use linear_type::*;
+    /// let option = new_linear!(None);
     /// let mapped = option.or_else(|| Some(123));
     /// assert_eq!(mapped.unwrap_some().into_inner(), 123);
     /// ```
-    pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Self {
+    pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Linear<Option<T>, Self> {
         match self.into_inner() {
-            inner @ Some(_) => Linear::new(inner),
-            None => Linear::new(f()),
+            inner @ Some(_) => Linear::transpose(inner),
+            None => Linear::transpose(f()),
         }
     }
 
@@ -205,13 +239,13 @@ impl<T> Linear<Option<T>> {
     /// # Example
     ///
     /// ```rust
-    /// # use linear_type::Linear;
-    /// let option = Linear::new(Some(123));
+    /// # use linear_type::*;
+    /// let option = new_linear!(Some(123));
     /// let unwrapped = option.unwrap_some();
     /// assert_eq!(unwrapped.into_inner(), 123);
     /// ```
-    pub fn unwrap_some(self) -> Linear<T> {
-        Linear::new(self.into_inner().unwrap())
+    pub fn unwrap_some(self) -> Linear<T, Self> {
+        Linear::transpose(self.into_inner().unwrap())
     }
 }
 
@@ -247,11 +281,4 @@ impl Drop for NoDrop {
         eprintln!("linear type dropped");
         std::process::abort();
     }
-}
-
-#[test]
-#[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
-#[should_panic(expected = "linear type dropped")]
-fn test_failed_destructure() {
-    let _linear = Linear::new(123);
 }

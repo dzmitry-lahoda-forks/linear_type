@@ -50,7 +50,7 @@ While any type can be wraped in a `Linear<T>`, it is recommended to use it with 
 which transitioning into a final state. The state transitions can be functions or closures.
 
 ```rust
-use linear_type::Linear;
+use linear_type::*;
 use std::fs::File;
 use std::io::{Read, Result};
 
@@ -74,7 +74,7 @@ fn read_text(ReadonlyFile(mut file): ReadonlyFile) -> Result<FileContent> {
 
 fn main() {
     // Create a linear type and transition through the states
-    let file_content = Linear::new(Filename("README.md"))
+    let file_content = new_linear!(Filename("README.md"))
         .map(open_file)
         .map_ok(read_text)
         .unwrap_ok();
