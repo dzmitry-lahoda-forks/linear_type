@@ -1,30 +1,48 @@
 # About
 
-This crate strives to implement [linear
+This crate strives to implement unique [linear
 types](https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems).
 
 The [`Linear<T>`] type that wraps a `T`. Linear types must not be dropped but eventualy consumed.
 There are only a few methods you can use on a linear type.
 
 * `new()` creates a new linear type.
-* `into_inner()` destructures a object returning the inner value as non linear type.
-* `destroy()` manual drop method, consumes and destroys the wrapped `T`.
+* `into_inner()` destructures a object returning the inner `T`.
+* `destroy()` manual drop method, consumes and destroys the wrapped inner type.
 * `map()` applies a `FnOnce` with the destructured inner type as parameter yielding another
   linear type.
 * Some variants of `map()` to handle `Linear<Result<T,E>>` and `Linear<Option<T>>`.
 * `Linear<Result<T,E>>` and `Linear<Option<T>>` support few forms of `unwrap()`.
+* `splice()` and `merge()` to divert and join the program flow of unique types.
 
 Unlike `Pin`, linear types can be moved, and unlike `ManuallyDrop`, linear types are required to be
 eventually deconstructed and consumed.
 
+Strict linearity is enforced by creating unique types for each linear type which track the
+operations that are applied on the values. They are tagged `#[must_use]`, when one still tries
+to drop a linear type by `let _ = ...` or `drop()` a runtime panic happens. Unfortunally there
+is no way to detect this at compile time in stable rust.
+
+
+### Dropping Policy and Panics
+
+Panicking is inherently incompatible with a linear type system. Still rust relies on the fact
+that panics can basically happen at any time. We face the situation that we have to mix
+standard rust with a linear type system.
+
+Linear types are ordinary rust types. When panics happen then the all state is properly
+unwinded and destructors are called, even for the inners of linear types. This is only
+modestly sound but the best we can do.
+
 
 ## Status
 
-This crate started with a discussion on IRC. It does not implement pure linear-type theory as
-this would require language support. Consider it as proof-of-concept. Most notably using
-`mem::forget()` on a linear type will break the linear type semantics. This crate can not
-prevent this. It may have some use and should be safe (in the Rust sense) to use. Improvements
-and PR's are welcome. This crate will be somewhat in flux before a 1.0 version is released.
+This crate started with a discussion on IRC. It does not completey implement pure linear-type
+theory as this would require language support. Consider it as proof-of-concept. Most notably
+using `mem::forget()` on a linear type will break the linear type semantics. This crate can
+not prevent this. It may have some use and should be safe (in the Rust sense) to
+use. Improvements and PR's are welcome. This crate will be somewhat in flux before a 1.0
+version is released.
 
 
 ## Feature Flags

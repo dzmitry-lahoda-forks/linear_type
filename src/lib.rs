@@ -14,7 +14,7 @@ use std::{fmt::Debug, marker::PhantomData, mem::ManuallyDrop};
 /// as substitutes for a destroyed value in a chain of linear evaluation.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
-pub struct Linear<T, U>(ManuallyDrop<T>, NoDrop, PhantomData<U>);
+pub struct Linear<T, U>(T, PhantomData<U>);
 
 /// A marker struct that is constructed with unique closure types.
 pub struct UniqueType<F: Fn()>(pub ManuallyDrop<F>);
@@ -42,7 +42,7 @@ impl<T, F: Fn()> Linear<T, UniqueType<F>> {
     // to be called by the new_linear macro
     #[doc(hidden)]
     pub const fn new(inner: T, _: UniqueType<F>) -> Self {
-        Linear(ManuallyDrop::new(inner), NoDrop, PhantomData)
+        Linear(inner, PhantomData)
     }
 }
 
@@ -73,10 +73,10 @@ impl<T, U> Linear<T, U> {
     /// # use linear_type::*;
     /// let linear = new_linear!(123);
     /// # #[cfg(any(doc, feature = "semipure"))]
-    /// assert_eq!(linear.get_ref(), &123);
+    /// assert_eq!(*linear.get_ref(), 123);
     /// # linear.into_inner();
     /// ```
-    pub fn get_ref(&self) -> &T {
+    pub const fn get_ref(&self) -> &T {
         &self.0
     }
 
@@ -92,9 +92,8 @@ impl<T, U> Linear<T, U> {
     /// assert_eq!(inner, 123);
     /// ```
     pub fn into_inner(self) -> T {
-        let Linear(t, n, _) = self;
-        std::mem::forget(n);
-        ManuallyDrop::into_inner(t)
+        let this = ManuallyDrop::new(self);
+        unsafe { std::ptr::read(&this.0) }
     }
 
     /// Consumes and destroys the wrapped value. This is like `into_inner()` and them dropping
@@ -108,12 +107,8 @@ impl<T, U> Linear<T, U> {
     /// linear.destroy();
     /// ```
     #[inline]
-    pub fn destroy(mut self) {
-        unsafe {
-            ManuallyDrop::drop(&mut self.0);
-        }
-        let Linear(_, n, _) = self;
-        std::mem::forget(n);
+    pub fn destroy(self) {
+        drop(self.into_inner());
     }
 
     /// Transforms one linear type to another linear type. The inner value is passed to the
@@ -128,12 +123,12 @@ impl<T, U> Linear<T, U> {
     /// assert_eq!(string.into_inner(), "123");
     /// ```
     pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> Linear<R, Map<F, Self>> {
-        Linear(ManuallyDrop::new(f(self.into_inner())), NoDrop, PhantomData)
+        Self::transpose(f(self.into_inner()))
     }
 
     #[inline]
     const fn transpose<R, S>(r: R) -> Linear<R, S> {
-        Linear(ManuallyDrop::new(r), NoDrop, PhantomData)
+        Linear(r, PhantomData)
     }
 
     /// Splices a linear type into a two-tuple of linear types. The caller has to ensure that
@@ -326,36 +321,14 @@ pub struct SpliceRight<F, R>(PhantomData<F>, PhantomData<R>);
 #[doc(hidden)]
 pub struct Merge<F, L, R>(PhantomData<F>, PhantomData<L>, PhantomData<R>);
 
-/// A marker type that can not be dropped.
-///
-/// # Panics or Aborts
-///
-/// When the `drop_unchecked` feature is not enabled, this type will panic in tests when dropped
-/// or abort in non-test builds. This is to ensure that linear types are not dropped and must be
-/// destructured manually. Dropping a linear type is considered a programming error and
-/// must not happen. The panic in test builds is only there to permit completion of the test suite.
-///
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[must_use]
-struct NoDrop;
-
-/// Drop is only implemented when either `debug_assertions` are enabled or the
-/// `drop_unchecked` feature is not enabled.
-#[cfg(any(debug_assertions, not(feature = "drop_unchecked")))]
-impl Drop for NoDrop {
-    #[cfg(test)]
+impl<T, U> Drop for Linear<T, U> {
+    #[cfg_attr(any(test, debug_assertions), track_caller)]
     fn drop(&mut self) {
         // Avoid double panic when we are already panicking
+        #[cfg(not(feature = "drop_unchecked"))]
         #[allow(clippy::manual_assert)]
         if !std::thread::panicking() {
-            panic!("linear type dropped");
+            panic!("linear type dropped {}", std::any::type_name::<Self>());
         }
-    }
-    #[cfg(not(test))]
-    fn drop(&mut self) {
-        // be nice in debug builds and tell why we are aborting
-        #[cfg(debug_assertions)]
-        eprintln!("linear type dropped");
-        std::process::abort();
     }
 }
