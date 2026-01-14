@@ -6,7 +6,7 @@ types](https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_syste
 The [`Linear<T>`] type that wraps a `T`. Linear types must not be dropped but eventualy consumed.
 There are only a few methods you can use on a linear type.
 
-* `new()` creates a new linear type.
+* `new_linear!()` creates a new linear type. Must be a macro for unique types.
 * `into_inner()` destructures a object returning the inner `T`.
 * `destroy()` manual drop method, consumes and destroys the wrapped inner type.
 * `map()` applies a `FnOnce` with the destructured inner type as parameter yielding another
@@ -44,6 +44,11 @@ not prevent this. It may have some use and should be safe (in the Rust sense) to
 use. Improvements and PR's are welcome. This crate will be somewhat in flux before a 1.0
 version is released.
 
+Creating unique types for each new linear type and each operation on it is expected to be
+heavy on the type system. Don't expect it to be fast and slim to compile. If possible enable
+LTO in release builds since it may reduce the footprint of monomorphized functions
+significantly.
+
 
 ## Feature Flags
 
@@ -51,7 +56,7 @@ version is released.
 
   When this crate is compiled with the `drop_unchecked` feature flag, then, in release builds,
   dropping a linear type will not panic as intended. The linear-type semantic is not
-  enforced. This defeats the purpose of this crate. it adds only a small space and performance
+  enforced. This defeats the purpose of this crate. It adds only a small space and performance
   improvement. It should considered to be UB and should only be enabled on programs that are
   thoroughly validated and tested when required.
 
