@@ -80,6 +80,25 @@ impl<T, U> Linear<T, U> {
         &self.0
     }
 
+    /// Let a function inspect the inner value.
+    ///
+    /// This takes a plain function pointer (can be written as non capturing closure
+    /// syntax). This is necessary because this function must not capture outside state and
+    /// have any side effect except for diagnostic ones. This make inspect reasonably more
+    /// sound so it wont use the `semipure` feature flag.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use linear_type::*;
+    /// let linear = new_linear!(123).inspect(|i| assert_eq!(*i, 123));
+    /// # linear.destroy();
+    /// ```
+    pub fn inspect(self, f: fn(&T)) -> Self {
+        f(&self.0);
+        self
+    }
+
     /// Destructures the linear type and returns the inner type.  This must eventually be called on
     /// any linear type, failing to do so will panic when the linear type is dropped.
     ///
