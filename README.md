@@ -23,6 +23,23 @@ There are only a few methods you can use on a linear type.
 Unlike `Pin`, linear types can be moved, and unlike `ManuallyDrop`, linear types are required to be
 eventually deconstructed and consumed.
 
+## newtype_linear! macro
+
+You can define your own linear newtype that carries the same guarantees and helper methods as
+`Linear<T, U>` using the `newtype_linear!` macro:
+
+```rust
+use linear_type::newtype_linear;
+
+newtype_linear! {
+    /// Custom linear wrapper.
+    pub struct MyLinear<T, U>(T);
+}
+```
+
+This generates the full linear wrapper implementation, including `map`, `into_inner`, and the
+`Result`/`Option` extensions.
+
 
 ## Status
 
@@ -90,5 +107,4 @@ fn main() {
     assert!(text.contains("# Example"));
 }
 ```
-
 
