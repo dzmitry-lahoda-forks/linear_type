@@ -9,7 +9,7 @@ error[E0308]: mismatched types
 13 |     bar = foo;
    |           ^^^ expected closure, found a different closure
    |
-   = note: expected struct `ReturnResponseMustUse<String, UniqueType<{closure@$DIR/src/lib.rs:665:56: 665:58}>>`
-              found struct `ReturnResponseMustUse<String, UniqueType<{closure@$DIR/src/lib.rs:665:56: 665:58}>>`
+   = note: expected struct `ReturnResponseMustUse<String, UniqueType<{closure@$DIR/src/lib.rs:661:56: 661:58}>>`
+              found struct `ReturnResponseMustUse<String, UniqueType<{closure@$DIR/src/lib.rs:661:56: 661:58}>>`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object

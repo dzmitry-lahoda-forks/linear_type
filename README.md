@@ -9,6 +9,8 @@ Not sure I ready to use radicle this time. Hope author will examine changes and 
 This crate strives to implement [linear
 types](https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems).
 
+Combines `#[must_use]` attribute with runtime `panic!` in type level. 
+
 The [`Linear<T>`] type that wraps a `T`. Linear types must not be dropped but eventualy consumed.
 There are only a few methods you can use on a linear type.
 
@@ -25,16 +27,10 @@ eventually deconstructed and consumed.
 
 ## linear! macro
 
-You can define your own linear newtype that carries the same guarantees and helper methods as
-`Linear<T, U>` using the `linear!` macro:
-
 ```rust
 use linear_type::linear;
 
-linear! {
-    /// Custom linear wrapper.
-    pub struct MyLinear<T, U>(T);
-}
+linear!(pub struct LinearResult(String););
 ```
 
 This generates the full linear wrapper implementation, including `map`, `into`, and the

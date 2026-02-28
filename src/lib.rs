@@ -32,11 +32,7 @@ impl<U> Ord for Linearity<U> {
 
 #[doc(hidden)]
 pub const fn __linearity<U>() -> Linearity<U> {
-    Linearity(
-        NoDrop,
-        core::marker::PhantomData,
-        core::cell::Cell::new(()),
-    )
+    Linearity(NoDrop, core::marker::PhantomData, core::cell::Cell::new(()))
 }
 
 #[doc(hidden)]
@@ -110,7 +106,7 @@ macro_rules! linear {
             /// assert_eq!(linear.get_ref(), &123);
             /// # linear.into();
             /// ```
-            pub fn get_ref(&self) -> &$inner {
+            pub unsafe fn get_ref(&self) -> &$inner {
                 &self.0
             }
 
@@ -344,7 +340,7 @@ macro_rules! linear {
 
             #[cfg(any(doc, feature = "semipure"))]
             /// Returns a reference to the inner value.
-            pub fn get_ref(&self) -> &$inner {
+            pub unsafe fn get_ref(&self) -> &$inner {
                 &self.0
             }
 
@@ -435,7 +431,7 @@ macro_rules! linear {
             /// assert_eq!(linear.get_ref(), &123);
             /// # linear.into();
             /// ```
-            pub fn get_ref(&self) -> &$inner {
+            pub unsafe fn get_ref(&self) -> &$inner {
                 &self.0
             }
 
@@ -732,6 +728,12 @@ mod tests {
         let _ = crate::LinearString::new("Hello".to_string());
     }
 
+    linear!(
+        pub struct Foo(u32);
+    );
 
-    linear!(pub struct Foo(u32););    
-} 
+    #[test]
+    fn foo() {
+        Foo::new(42).destroy();
+    }
+}
