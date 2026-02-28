@@ -19,8 +19,8 @@ pub struct Linear<T, U>(
     ManuallyDrop<T>,
     NoDrop,
     PhantomData<U>,
-    core::cell::Cell<()>,
-); // Cell<()> is just stable !Sync
+    core::cell::Cell<()>, // Cell<()> is just stable !Sync
+);
 
 /// Hashes only inner value.
 impl<T: core::hash::Hash, U> core::hash::Hash for Linear<T, U> {
@@ -37,6 +37,14 @@ impl<T: Debug, U> core::fmt::Debug for Linear<T, U> {
             .field(&type_name::<U>())
             .finish()
     }
+}
+
+
+/// Generates linear newtype from newtype name and inner value type.
+/// `Linear<T, U>`` is just generated generic variant with some added extra helpers for uniquness 
+#[macro_export]
+macro_rules! newtype_linear {
+
 }
 
 /// Must use type to be occasionally used in function boundaries
