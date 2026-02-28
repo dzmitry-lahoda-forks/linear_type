@@ -4,12 +4,31 @@ use core::mem::ManuallyDrop;
 
 /// Linearity holder. Carries the unique type marker and ensures a linear value is not dropped.
 #[doc(hidden)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Linearity<U>(
     NoDrop,
     core::marker::PhantomData<U>,
     core::cell::Cell<()>, // Cell<()> is just stable !Sync
 );
+
+impl<U> PartialEq for Linearity<U> {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl<U> Eq for Linearity<U> {}
+
+impl<U> PartialOrd for Linearity<U> {
+    fn partial_cmp(&self, _other: &Self) -> Option<core::cmp::Ordering> {
+        Some(core::cmp::Ordering::Equal)
+    }
+}
+
+impl<U> Ord for Linearity<U> {
+    fn cmp(&self, _other: &Self) -> core::cmp::Ordering {
+        core::cmp::Ordering::Equal
+    }
+}
 
 #[doc(hidden)]
 pub const fn __linearity<U>() -> Linearity<U> {
@@ -20,10 +39,15 @@ pub const fn __linearity<U>() -> Linearity<U> {
     )
 }
 
+#[doc(hidden)]
+pub const fn __linear_from_parts<T, U>(value: T) -> Linear<T, U> {
+    Linear(::core::mem::ManuallyDrop::new(value), __linearity::<U>())
+}
+
 /// Generates linear newtype from newtype name and inner value type.
 /// `Linear<T, U>`` is just generated generic variant with some added extra helpers for uniquness
 #[macro_export]
-macro_rules! newtype_linear {
+macro_rules! linear {
     (
         $(#[$meta:meta])*
         $vis:vis struct $name:ident<$t:ident, $u:ident>($inner:ty);
@@ -84,7 +108,7 @@ macro_rules! newtype_linear {
             /// let linear = new_linear!(123);
             /// # #[cfg(any(doc, feature = "semipure"))]
             /// assert_eq!(linear.get_ref(), &123);
-            /// # linear.into_inner();
+            /// # linear.into();
             /// ```
             pub fn get_ref(&self) -> &$inner {
                 &self.0
@@ -98,16 +122,16 @@ macro_rules! newtype_linear {
             /// ```rust
             /// # use linear_type::*;
             /// let linear = new_linear!(123);
-            /// let inner = linear.into_inner();
+            /// let inner = linear.into();
             /// assert_eq!(inner, 123);
             /// ```
-            pub fn into_inner(self) -> $inner {
+            pub fn into(self) -> $inner {
                 let $name(t, linearity) = self;
                 ::core::mem::forget(linearity);
                 ::core::mem::ManuallyDrop::into_inner(t)
             }
 
-            /// Consumes and destroys the wrapped value. This is like `into_inner()` and them dropping
+            /// Consumes and destroys the wrapped value. This is like `into()` and them dropping
             /// the returned value.
             ///
             /// # Example
@@ -135,10 +159,10 @@ macro_rules! newtype_linear {
             /// # use linear_type::*;
             /// let number = new_linear!(123);
             /// let string = number.map(|x| x.to_string());
-            /// assert_eq!(string.into_inner(), "123");
+            /// assert_eq!(string.into(), "123");
             /// ```
             pub fn map<F: FnOnce($inner) -> R, R>(self, f: F) -> $name<R, Self> {
-                Self::transpose(f(self.into_inner()))
+                Self::transpose(f(self.into()))
             }
 
             const fn transpose<R>(r: R) -> $name<R, Self> {
@@ -161,13 +185,13 @@ macro_rules! newtype_linear {
             /// # use std::io::Read;
             /// let result = new_linear!(std::fs::File::open("Cargo.toml"));
             /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
-            /// assert!(mapped.unwrap_ok().into_inner().contains("linear_type"));
+            /// assert!(mapped.unwrap_ok().into().contains("linear_type"));
             /// ```
             pub fn map_ok<F: FnOnce($t) -> ::core::result::Result<R, E>, R>(
                 self,
                 f: F,
             ) -> $name<::core::result::Result<R, E>, Self> {
-                match self.into_inner() {
+                match self.into() {
                     Ok(t) => Self::transpose(f(t)),
                     Err(e) => Self::transpose(Err(e)),
                 }
@@ -179,7 +203,7 @@ macro_rules! newtype_linear {
                 self,
                 f: F,
             ) -> $name<::core::result::Result<$t, R>, Self> {
-                match self.into_inner() {
+                match self.into() {
                     Ok(t) => Self::transpose(Ok(t)),
                     Err(e) => Self::transpose(f(e)),
                 }
@@ -194,7 +218,7 @@ macro_rules! newtype_linear {
             ///
             /// When the value is an `Err`.
             pub fn unwrap_ok(self) -> $name<$t, Self> {
-                $name::transpose(self.into_inner().unwrap())
+                $name::transpose(self.into().unwrap())
             }
         }
 
@@ -206,7 +230,7 @@ macro_rules! newtype_linear {
             ///
             /// When the value is an `Ok`.
             pub fn unwrap_err(self) -> $name<E, Self> {
-                $name::transpose(self.into_inner().unwrap_err())
+                $name::transpose(self.into().unwrap_err())
             }
         }
 
@@ -222,13 +246,13 @@ macro_rules! newtype_linear {
             /// # use linear_type::*;
             /// let option = new_linear!(Some(123));
             /// let mapped = option.map_some(|x| Some(x.to_string()));
-            /// assert_eq!(mapped.unwrap_some().into_inner(), "123");
+            /// assert_eq!(mapped.unwrap_some().into(), "123");
             /// ```
             pub fn map_some<F: FnOnce($t) -> ::core::option::Option<R>, R>(
                 self,
                 f: F,
             ) -> $name<::core::option::Option<R>, Self> {
-                match self.into_inner() {
+                match self.into() {
                     Some(t) => Self::transpose(f(t)),
                     None => Self::transpose(None),
                 }
@@ -243,13 +267,13 @@ macro_rules! newtype_linear {
             /// # use linear_type::*;
             /// let option = new_linear!(None);
             /// let mapped = option.or_else(|| Some(123));
-            /// assert_eq!(mapped.unwrap_some().into_inner(), 123);
+            /// assert_eq!(mapped.unwrap_some().into(), 123);
             /// ```
             pub fn or_else<F: FnOnce() -> ::core::option::Option<$t>>(
                 self,
                 f: F,
             ) -> $name<::core::option::Option<$t>, Self> {
-                match self.into_inner() {
+                match self.into() {
                     inner @ Some(_) => Self::transpose(inner),
                     None => Self::transpose(f()),
                 }
@@ -267,16 +291,348 @@ macro_rules! newtype_linear {
             /// # use linear_type::*;
             /// let option = new_linear!(Some(123));
             /// let unwrapped = option.unwrap_some();
-            /// assert_eq!(unwrapped.into_inner(), 123);
+            /// assert_eq!(unwrapped.into(), 123);
             /// ```
             pub fn unwrap_some(self) -> $name<$t, Self> {
-                $name::transpose(self.into_inner().unwrap())
+                $name::transpose(self.into().unwrap())
+            }
+        }
+    };
+    (
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident($inner:ty);
+    ) => {
+        $(#[$meta])*
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        #[must_use]
+        $vis struct $name(
+            ::core::mem::ManuallyDrop<$inner>,
+            $crate::Linearity<$crate::UniqueType<fn()>>,
+        );
+
+        /// Hashes only inner value.
+        impl ::core::hash::Hash for $name
+        where
+            $inner: ::core::hash::Hash,
+        {
+            fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                self.0.hash(state);
+            }
+        }
+
+        /// Custom debug outputing value and lifetime type
+        impl ::core::fmt::Debug for $name
+        where
+            $inner: ::core::fmt::Debug,
+        {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                f.debug_tuple(stringify!($name))
+                    .field(&self.0)
+                    .field(&::core::any::type_name::<$crate::UniqueType<fn()>>())
+                    .finish()
+            }
+        }
+
+        impl $name {
+            /// Constructs a new value with the fixed `U` type.
+            pub const fn new(inner: $inner) -> Self {
+                $name(
+                    ::core::mem::ManuallyDrop::new(inner),
+                    $crate::__linearity::<$crate::UniqueType<fn()>>(),
+                )
+            }
+
+            #[cfg(any(doc, feature = "semipure"))]
+            /// Returns a reference to the inner value.
+            pub fn get_ref(&self) -> &$inner {
+                &self.0
+            }
+
+            /// Destructures the linear type and returns the inner type.  This must eventually be called on
+            /// any linear type, failing to do so will panic when the linear type is dropped.
+            pub fn into(self) -> $inner {
+                let $name(t, linearity) = self;
+                ::core::mem::forget(linearity);
+                ::core::mem::ManuallyDrop::into_inner(t)
+            }
+
+            /// Consumes and destroys the wrapped value. This is like `into()` and them dropping
+            /// the returned value.
+            #[inline]
+            pub fn destroy(mut self) {
+                unsafe {
+                    ::core::mem::ManuallyDrop::drop(&mut self.0);
+                }
+                let $name(_, linearity) = self;
+                ::core::mem::forget(linearity);
+            }
+
+            /// Transforms one linear type to another linear type. The inner value is passed to the
+            /// closure and the return value is wrapped in a `Linear`.
+            pub fn map<F: FnOnce($inner) -> R, R>(self, f: F) -> $crate::Linear<R, Self> {
+                $crate::__linear_from_parts::<R, Self>(f(self.into()))
+            }
+        }
+
+        // No Result/Option extensions for the fully concrete variant.
+    };
+    (
+        $(#[$meta:meta])*
+        $vis:vis struct $name:ident<$t:ident>($inner:ty);
+    ) => {
+        $(#[$meta])*
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        #[must_use]
+        $vis struct $name<$t>(
+            ::core::mem::ManuallyDrop<$inner>,
+            $crate::Linearity<$crate::UniqueType<fn()>>,
+        );
+
+        /// Hashes only inner value.
+        impl<$t: ::core::hash::Hash> ::core::hash::Hash for $name<$t> {
+            fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                self.0.hash(state);
+            }
+        }
+
+        /// Custom debug outputing value and lifetime type
+        impl<$t: ::core::fmt::Debug> ::core::fmt::Debug for $name<$t> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                f.debug_tuple(stringify!($name))
+                    .field(&self.0)
+                    .field(&::core::any::type_name::<$crate::UniqueType<fn()>>())
+                    .finish()
+            }
+        }
+
+        impl<$t> $name<$t> {
+            /// Constructs a new value with the fixed `U` type.
+            pub const fn new(inner: $inner) -> Self {
+                $name(
+                    ::core::mem::ManuallyDrop::new(inner),
+                    $crate::__linearity::<$crate::UniqueType<fn()>>(),
+                )
+            }
+
+            #[cfg(any(doc, feature = "semipure"))]
+            /// Returns a reference to the inner value.
+            ///
+            /// In a pure linear type-system even immutable access to the inner value is not available
+            /// because this may leak unwanted interior mutability or enable to clone the inner which
+            /// would be impure (in a linear type system). When one doesn't do either then the rust
+            /// type system/lifetimes are strong enough to be pure. This method is only available when
+            /// one defines the `semipure` feature. It's then the decision of the programmer not to use
+            /// any interior mutability/cloning or bend the rules and do something impure to make this
+            /// crate more convenient to use.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let linear = Example::new(123);
+            /// # #[cfg(any(doc, feature = "semipure"))]
+            /// assert_eq!(linear.get_ref(), &123);
+            /// # linear.into();
+            /// ```
+            pub fn get_ref(&self) -> &$inner {
+                &self.0
+            }
+
+            /// Destructures the linear type and returns the inner type.  This must eventually be called on
+            /// any linear type, failing to do so will panic when the linear type is dropped.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let linear = Example::new(123);
+            /// let inner = linear.into();
+            /// assert_eq!(inner, 123);
+            /// ```
+            pub fn into(self) -> $inner {
+                let $name(t, linearity) = self;
+                ::core::mem::forget(linearity);
+                ::core::mem::ManuallyDrop::into_inner(t)
+            }
+
+            /// Consumes and destroys the wrapped value. This is like `into()` and them dropping
+            /// the returned value.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let linear = Example::new(123);
+            /// linear.destroy();
+            /// ```
+            #[inline]
+            pub fn destroy(mut self) {
+                unsafe {
+                    ::core::mem::ManuallyDrop::drop(&mut self.0);
+                }
+                let $name(_, linearity) = self;
+                ::core::mem::forget(linearity);
+            }
+
+            /// Transforms one linear type to another linear type. The inner value is passed to the
+            /// closure and the return value is wrapped in a `Linear`.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let number = Example::new(123);
+            /// let string = number.map(|x| x.to_string());
+            /// assert_eq!(string.into(), "123");
+            /// ```
+            pub fn map<F: FnOnce($inner) -> R, R>(self, f: F) -> $name<R> {
+                $name::<R>::transpose(f(self.into()))
+            }
+
+            const fn transpose<R>(r: R) -> $name<R> {
+                $name(
+                    ::core::mem::ManuallyDrop::new(r),
+                    $crate::__linearity::<$u_ty>(),
+                )
+            }
+        }
+
+        /// Additional map methods for `Linear<Result<R,E>>`
+        impl<$t, E> $name<::core::result::Result<$t, E>> {
+            /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<R,E>>` by applying a function
+            /// to the `Ok` value.  Retains a `Err` value.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # use std::io::Read;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let result = Example::new(std::fs::File::open("Cargo.toml"));
+            /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
+            /// assert!(mapped.unwrap_ok().into().contains("linear_type"));
+            /// ```
+            pub fn map_ok<F: FnOnce($t) -> ::core::result::Result<R, E>, R>(
+                self,
+                f: F,
+            ) -> $name<::core::result::Result<R, E>> {
+                match self.into() {
+                    Ok(t) => $name::<::core::result::Result<R, E>>::transpose(f(t)),
+                    Err(e) => $name::<::core::result::Result<R, E>>::transpose(Err(e)),
+                }
+            }
+
+            /// Transforms a `Linear<Result<T,E>>` into `Linear<Result<T, R>>` by applying a function
+            /// to the `Err` value.  Retains a `Ok` value.
+            pub fn map_err<F: FnOnce(E) -> ::core::result::Result<$t, R>, R>(
+                self,
+                f: F,
+            ) -> $name<::core::result::Result<$t, R>> {
+                match self.into() {
+                    Ok(t) => $name::<::core::result::Result<$t, R>>::transpose(Ok(t)),
+                    Err(e) => $name::<::core::result::Result<$t, R>>::transpose(f(e)),
+                }
+            }
+        }
+
+        /// Additional `unwrap_ok()` method for `Linear<Result<T,E>>` where E is `Debug`.
+        impl<$t, E: ::core::fmt::Debug> $name<::core::result::Result<$t, E>> {
+            /// Unwraps a `Linear<Result<T,E>>` into a `Linear<T>`.
+            ///
+            /// # Panics
+            ///
+            /// When the value is an `Err`.
+            pub fn unwrap_ok(self) -> $name<$t> {
+                $name::<$t>::transpose(self.into().unwrap())
+            }
+        }
+
+        /// Additional `unwrap_err()` method for `Linear<Result<T,E>>` where T is `Debug`.
+        impl<$t: ::core::fmt::Debug, E> $name<::core::result::Result<$t, E>> {
+            /// Unwraps a `Linear<Result<T,E>>` into a `Linear<E>`.
+            ///
+            /// # Panics
+            ///
+            /// When the value is an `Ok`.
+            pub fn unwrap_err(self) -> $name<E> {
+                $name::<E>::transpose(self.into().unwrap_err())
+            }
+        }
+
+        /// Additional methods for `Linear<Option<T>>`, only fundamental methods are supported.
+        /// Anything beyond that needs to be handled manually.
+        impl<$t> $name<::core::option::Option<$t>> {
+            /// Transforms a `Linear<Option<T>>` into `Linear<Option<R>>` by applying a function
+            /// to the `Some` value.  Retains a `None` value.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let option = Example::new(Some(123));
+            /// let mapped = option.map_some(|x| Some(x.to_string()));
+            /// assert_eq!(mapped.unwrap_some().into(), "123");
+            /// ```
+            pub fn map_some<F: FnOnce($t) -> ::core::option::Option<R>, R>(
+                self,
+                f: F,
+            ) -> $name<::core::option::Option<R>> {
+                match self.into() {
+                    Some(t) => $name::<::core::option::Option<R>>::transpose(f(t)),
+                    None => $name::<::core::option::Option<R>>::transpose(None),
+                }
+            }
+
+            /// Transforms a `Linear<Option<T>>` into `Linear<Option<T>>` by applying a function
+            /// to the `None` value.  Retains a `Some` value.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let option = Example::new(None);
+            /// let mapped = option.or_else(|| Some(123));
+            /// assert_eq!(mapped.unwrap_some().into(), 123);
+            /// ```
+            pub fn or_else<F: FnOnce() -> ::core::option::Option<$t>>(
+                self,
+                f: F,
+            ) -> $name<::core::option::Option<$t>> {
+                match self.into() {
+                    inner @ Some(_) => $name::<::core::option::Option<$t>>::transpose(inner),
+                    None => $name::<::core::option::Option<$t>>::transpose(f()),
+                }
+            }
+
+            /// Unwraps a `Linear<Some<T>>` into a `Linear<T>`.
+            ///
+            /// # Panics
+            ///
+            /// When the value is `None`.
+            ///
+            /// # Example
+            ///
+            /// ```rust
+            /// # use linear_type::*;
+            /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
+            /// let option = Example::new(Some(123));
+            /// let unwrapped = option.unwrap_some();
+            /// assert_eq!(unwrapped.into(), 123);
+            /// ```
+            pub fn unwrap_some(self) -> $name<$t> {
+                $name::<$t>::transpose(self.into().unwrap())
             }
         }
     };
 }
 
-newtype_linear! {
+linear! {
     /// A linear type that must be destructured to access the inner value.
     ///
     /// Linear types are a way to enforce that a value is used exactly once.  This is useful in
@@ -295,7 +651,7 @@ pub type MustUse<T> = Linear<T, UniqueType<fn()>>;
 
 /// Type based must_use equivalent
 pub fn must_use<T>(val: T) -> MustUse<T> {
-    MustUse::new(val, unique_type!())
+    MustUse::new(val, unique!())
 }
 
 /// A marker struct that is constructed with unique closure types.
@@ -304,7 +660,7 @@ pub struct UniqueType<F: Fn()>(pub ManuallyDrop<F>);
 // Returns a value with a unique type for every call.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! unique_type {
+macro_rules! unique {
     () => {
         $crate::UniqueType(std::mem::ManuallyDrop::new(|| ()))
     };
@@ -315,7 +671,7 @@ macro_rules! unique_type {
 #[macro_export]
 macro_rules! new_linear {
     ($t:expr) => {
-        $crate::Linear::new($t, $crate::unique_type!())
+        $crate::Linear::new($t, $crate::unique!())
     };
 }
 
@@ -362,3 +718,20 @@ impl Drop for NoDrop {
         std::process::abort();
     }
 }
+
+linear! {
+    /// Linear string.
+    pub struct LinearString(String);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[should_panic]
+    fn panics() {
+        let _ = crate::LinearString::new("Hello".to_string());
+    }
+
+
+    linear!(pub struct Foo(u32););    
+} 

@@ -13,7 +13,7 @@ The [`Linear<T>`] type that wraps a `T`. Linear types must not be dropped but ev
 There are only a few methods you can use on a linear type.
 
 * `new()` creates a new linear type.
-* `into_inner()` destructures a object returning the inner value as non linear type.
+* `into()` destructures a object returning the inner value as non linear type.
 * `destroy()` manual drop method, consumes and destroys the wrapped `T`.
 * `map()` applies a `FnOnce` with the destructured inner type as parameter yielding another
   linear type.
@@ -23,21 +23,21 @@ There are only a few methods you can use on a linear type.
 Unlike `Pin`, linear types can be moved, and unlike `ManuallyDrop`, linear types are required to be
 eventually deconstructed and consumed.
 
-## newtype_linear! macro
+## linear! macro
 
 You can define your own linear newtype that carries the same guarantees and helper methods as
-`Linear<T, U>` using the `newtype_linear!` macro:
+`Linear<T, U>` using the `linear!` macro:
 
 ```rust
-use linear_type::newtype_linear;
+use linear_type::linear;
 
-newtype_linear! {
+linear! {
     /// Custom linear wrapper.
     pub struct MyLinear<T, U>(T);
 }
 ```
 
-This generates the full linear wrapper implementation, including `map`, `into_inner`, and the
+This generates the full linear wrapper implementation, including `map`, `into`, and the
 `Result`/`Option` extensions.
 
 
@@ -103,8 +103,7 @@ fn main() {
         .unwrap_ok();
 
     // destructure the file content
-    let FileContent(text) = file_content.into_inner();
+    let FileContent(text) = file_content.into();
     assert!(text.contains("# Example"));
 }
 ```
-

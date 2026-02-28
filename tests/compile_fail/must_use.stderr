@@ -1,0 +1,16 @@
+error: unused `Linear` that must be used
+ --> tests/compile_fail/must_use.rs:6:5
+  |
+6 |     new_linear!(123);
+  |     ^^^^^^^^^^^^^^^^
+  |
+note: the lint level is defined here
+ --> tests/compile_fail/must_use.rs:1:9
+  |
+1 | #![deny(warnings)]
+  |         ^^^^^^^^
+  = note: `#[deny(unused_must_use)]` implied by `#[deny(warnings)]`
+help: use `let _ = ...` to ignore the resulting value
+  |
+6 |     let _ = new_linear!(123);
+  |     +++++++

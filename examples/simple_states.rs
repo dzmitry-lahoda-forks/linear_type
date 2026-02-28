@@ -31,6 +31,6 @@ fn main() {
         .unwrap_ok();
 
     // destructure the file content
-    let FileContent(text) = file_content.into_inner();
+    let FileContent(text) = file_content.into();
     assert!(text.contains("# Example"));
 }

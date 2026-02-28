@@ -18,6 +18,9 @@ semipure = []
 [badges]
 maintenance = { status = "actively-developed" }
 
+[dev-dependencies]
+trybuild = "1.0"
+
 [lints.rust]
 missing_docs = "warn"
 unknown_lints = "allow"
