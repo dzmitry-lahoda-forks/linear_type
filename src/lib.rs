@@ -18,6 +18,7 @@ impl<U> PartialEq for Linearity<U> {
 
 impl<U> Eq for Linearity<U> {}
 
+#[expect(clippy::non_canonical_partial_ord_impl)]
 impl<U> PartialOrd for Linearity<U> {
     fn partial_cmp(&self, _other: &Self) -> Option<core::cmp::Ordering> {
         Some(core::cmp::Ordering::Equal)
@@ -31,6 +32,7 @@ impl<U> Ord for Linearity<U> {
 }
 
 #[doc(hidden)]
+#[must_use]
 pub const fn __linearity<U>() -> Linearity<U> {
     Linearity(NoDrop, core::marker::PhantomData, core::cell::Cell::new(()))
 }
@@ -41,7 +43,7 @@ pub const fn __linear_from_parts<T, U>(value: T) -> Linear<T, U> {
 }
 
 /// Generates linear newtype from newtype name and inner value type.
-/// `Linear<T, U>`` is just generated generic variant with some added extra helpers for uniquness
+/// `Linear<T, U>` is just generated generic variant with some added extra helpers for uniquness
 #[macro_export]
 macro_rules! linear {
     (
@@ -645,7 +647,7 @@ linear! {
 /// Must use type to be occasionally used in function boundaries
 pub type MustUse<T> = Linear<T, UniqueType<fn()>>;
 
-/// Type based must_use equivalent
+/// Type based `must_use` equivalent
 pub fn must_use<T>(val: T) -> MustUse<T> {
     MustUse::new(val, unique!())
 }
@@ -664,13 +666,6 @@ macro_rules! unique {
 
 /// Wraps a value of type `T` in `Linear<T>`. This macro ensures that every new instance has a
 /// unique type.
-#[macro_export]
-macro_rules! new_linear {
-    ($t:expr) => {
-        $crate::Linear::new($t, $crate::unique!())
-    };
-}
-
 /// ```compile_fail
 /// use linear_type::new_linear;
 ///
@@ -679,6 +674,12 @@ macro_rules! new_linear {
 /// let mut bar = new_linear!("test");
 /// bar = foo;
 /// ```
+#[macro_export]
+macro_rules! new_linear {
+    ($t:expr) => {
+        $crate::Linear::new($t, $crate::unique!())
+    };
+}
 
 /// A marker type that can not be dropped.
 ///

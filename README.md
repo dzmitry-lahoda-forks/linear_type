@@ -1,6 +1,6 @@
 # Important
 
-Fork of https://seed.pipapo.org/nodes/seed.pipapo.org/rad:z2HSXU1YYpbzTLp4LWXXL9j19rSnw and all credit goes to author of it.
+Fork of [linear_type](https://seed.pipapo.org/nodes/seed.pipapo.org/rad:z2HSXU1YYpbzTLp4LWXXL9j19rSnw) and all credit goes to author of it.
 
 Not sure I ready to use radicle this time. Hope author will examine changes and incorporate some.
 

@@ -7,7 +7,7 @@ fn ui_compile_fail() {
         Ok(existing) => format!("{existing} -D warnings"),
         Err(_) => "-D warnings".to_string(),
     };
-    std::env::set_var("RUSTFLAGS", rustflags);
+    unsafe { std::env::set_var("RUSTFLAGS", rustflags); }
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/compile_fail/*.rs");
 }
