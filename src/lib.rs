@@ -42,6 +42,53 @@ pub const fn __linear_from_parts<T, U>(value: T) -> Linear<T, U> {
     Linear(::core::mem::ManuallyDrop::new(value), __linearity::<U>())
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __deny_non_exhaustive {
+    () => {};
+    (#[non_exhaustive] $($rest:tt)*) => {
+        ::core::compile_error!("parts! impl must not target #[non_exhaustive] types");
+    };
+    (#[non_exhaustive = $($t:tt)*] $($rest:tt)*) => {
+        ::core::compile_error!("parts! impl must not target #[non_exhaustive] types");
+    };
+    (#[non_exhaustive($($t:tt)*)] $($rest:tt)*) => {
+        ::core::compile_error!("parts! impl must not target #[non_exhaustive] types");
+    };
+    (#[$_other:tt] $($rest:tt)*) => {
+        $crate::__deny_non_exhaustive!($($rest)*);
+    };
+}
+
+/// Generates `parts()` and `parts_ref()` methods for a struct to access all fields.
+#[macro_export]
+macro_rules! parts {
+    (
+        $(#[$meta:tt])*
+        impl $(<$($impl_generics:tt),*>)?
+        $name:ident $(<$($ty_generics:tt),*>)?
+        $(where $($where_clause:tt)+)?
+        {
+            $($field:ident : $fty:ty),+ $(,)?
+        }
+    ) => {
+        $crate::__deny_non_exhaustive!($(#[$meta])*);
+        impl $(<$($impl_generics),*>)? $name $(<$($ty_generics),*>)?
+        $(where $($where_clause)+)?
+        {
+            #[must_use]
+            pub fn parts(self) -> ($($fty),+,) {
+                ($(self.$field),+,)
+            }
+
+            #[must_use]
+            pub fn parts_ref(&self) -> ($(& $fty),+,) {
+                ($(&self.$field),+,)
+            }
+        }
+    };
+}
+
 /// Generates linear newtype from newtype name and inner value type.
 /// `Linear<T, U>` is just generated generic variant with some added extra helpers for uniquness
 #[macro_export]
@@ -736,5 +783,45 @@ mod tests {
     #[test]
     fn foo() {
         Foo::new(42).destroy();
+    }
+
+    struct Abc {
+        a: String,
+        b: u8,
+        c: Vec<()>,
+    }
+
+    parts! {
+        impl Abc {
+            a: String,
+            b: u8,
+            c: Vec<()>,
+        }
+    }
+
+    #[test]
+    fn parts_ref() {
+        let abc = Abc {
+            a: "hi".to_string(),
+            b: 7,
+            c: vec![()],
+        };
+        let (a, b, c) = abc.parts_ref();
+        assert_eq!(a, "hi");
+        assert_eq!(*b, 7);
+        assert_eq!(c.len(), 1);
+    }
+
+    #[test]
+    fn parts() {
+        let abc = Abc {
+            a: "hi".to_string(),
+            b: 7,
+            c: vec![()],
+        };
+        let (a, b, c) = abc.parts();
+        assert_eq!(a, "hi");
+        assert_eq!(b, 7);
+        assert_eq!(c.len(), 1);
     }
 }

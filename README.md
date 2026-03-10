@@ -103,3 +103,68 @@ fn main() {
     assert!(text.contains("# Example"));
 }
 ```
+
+### Parts macro
+
+Consider struct 
+
+```rust
+struct Abc {
+  a: String,
+  b: u8,
+  c: Vec<()>
+}
+```
+
+On caller side to ensure all fields used one can do:
+
+```rust
+struct Abc {
+  a: String,
+  b: u8,
+  c: Vec<()>
+}
+
+let abc = Abc {
+  a: "hi".to_string(),
+  b: 7,
+  c: vec![()],
+};
+let Abc { a, b, c} = abc;
+```
+
+
+If struct market non_exaustive, or caller use `..` or `a: _`, easy to miss return.
+
+Also field setters could be private.
+
+so `parts!` macro allows to access all fileds like:
+
+```rust
+use linear_type::parts;
+
+struct Abc {
+  a: String,
+  b: u8,
+  c: Vec<()>
+}
+
+parts! {
+  impl Abc {
+    a: String,
+    b: u8,
+    c: Vec<()>,
+  }
+}
+
+let abc = Abc {
+  a: "hi".to_string(),
+  b: 7,
+  c: vec![()],
+};
+
+let (a,b,c) = abc.parts_ref();
+let (a,b,c) = abc.parts();
+```
+
+Both methods of parts and parts_ref marcked as must_use.

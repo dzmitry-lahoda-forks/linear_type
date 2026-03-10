@@ -1,0 +1,12 @@
+error: parts! impl must not target #[non_exhaustive] types
+  --> tests/compile_fail/parts_non_exhaustive.rs:7:1
+   |
+ 7 | / parts! {
+ 8 | |     #[non_exhaustive]
+ 9 | |     impl Abc {
+10 | |         a: String,
+11 | |     }
+12 | | }
+   | |_^
+   |
+   = note: this error originates in the macro `$crate::__deny_non_exhaustive` which comes from the expansion of the macro `parts` (in Nightly builds, run with -Z macro-backtrace for more info)
