@@ -72,9 +72,10 @@ which transitioning into a final state. The state transitions can be functions o
 use linear_type::*;
 use std::fs::File;
 use std::io::{Read, Result};
+use std::path::PathBuf;
 
 // define some newtypes for the states
-struct Filename(&'static str);
+struct Filename(PathBuf);
 #[derive(Debug)]
 struct ReadonlyFile(File);
 #[derive(Debug)]
@@ -93,7 +94,9 @@ fn read_text(ReadonlyFile(mut file): ReadonlyFile) -> Result<FileContent> {
 
 fn main() {
     // Create a linear type and transition through the states
-    let file_content = new_linear!(Filename("README.md"))
+    let file_content = new_linear!(Filename(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../README.md"),
+    ))
         .map(open_file)
         .map_ok(read_text)
         .unwrap_ok();

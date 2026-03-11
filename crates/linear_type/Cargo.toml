@@ -19,6 +19,7 @@ semipure = []
 maintenance = { status = "actively-developed" }
 
 [dev-dependencies]
+static_assertions = "1.1"
 trybuild = "1.0"
 
 [lints.rust]

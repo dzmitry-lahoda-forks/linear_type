@@ -60,7 +60,33 @@ macro_rules! __deny_non_exhaustive {
     };
 }
 
+macro_rules! force_parts {
+    () => {
+        #[forbid(unused_variables)]
+        #[forbid(clippy::rest_pat_in_fully_bound_structs)]
+        #[forbid(clippy::unneeded_wildcard_pattern)]
+        #[forbid(let_underscore_drop)]
+    };
+}
+
 /// Generates `parts()` and `parts_ref()` methods for a struct to access all fields.
+pub trait Parts {
+    /// Tuple of owned fields returned by `parts(self)`.
+    type Owned;
+
+    /// Tuple of borrowed fields returned by `parts_ref(&self)`.
+    type Ref<'a>
+    where
+        Self: 'a;
+
+    /// Destructure the type into all of its fields.
+    fn parts(self) -> Self::Owned;
+
+    /// Borrow all fields at once.
+    fn parts_ref(&self) -> Self::Ref<'_>;
+}
+
+/// Generates a `Parts` impl and inherent `parts()` / `parts_ref()` methods for a struct.
 #[macro_export]
 macro_rules! parts {
     (
@@ -73,17 +99,35 @@ macro_rules! parts {
         }
     ) => {
         $crate::__deny_non_exhaustive!($(#[$meta])*);
+        impl $(<$($impl_generics),*>)? $crate::Parts for $name $(<$($ty_generics),*>)?
+        $(where $($where_clause)+)?
+        {
+            type Owned = ($($fty),+,);
+
+            type Ref<'__parts> = ($(&'__parts $fty),+,)
+            where
+                Self: '__parts;
+
+            fn parts(self) -> Self::Owned {
+                ($(self.$field),+,)
+            }
+
+            fn parts_ref(&self) -> Self::Ref<'_> {
+                ($(&self.$field),+,)
+            }
+        }
+
         impl $(<$($impl_generics),*>)? $name $(<$($ty_generics),*>)?
         $(where $($where_clause)+)?
         {
             #[must_use]
-            pub fn parts(self) -> ($($fty),+,) {
-                ($(self.$field),+,)
+            pub fn parts(self) -> <Self as $crate::Parts>::Owned {
+                <Self as $crate::Parts>::parts(self)
             }
 
             #[must_use]
-            pub fn parts_ref(&self) -> ($(& $fty),+,) {
-                ($(&self.$field),+,)
+            pub fn parts_ref(&self) -> <Self as $crate::Parts>::Ref<'_> {
+                <Self as $crate::Parts>::parts_ref(self)
             }
         }
     };
@@ -770,11 +814,16 @@ linear! {
 
 #[cfg(test)]
 mod tests {
+    use static_assertions::assert_not_impl_any;
+
     #[test]
     #[should_panic]
     fn panics() {
         let _ = crate::LinearString::new("Hello".to_string());
     }
+
+    assert_not_impl_any!(crate::LinearString: Clone, Copy);
+    assert_not_impl_any!(crate::Linear<u8, crate::UniqueType<fn()>>: Clone, Copy);
 
     linear!(
         pub struct Foo(u32);
@@ -820,6 +869,23 @@ mod tests {
             c: vec![()],
         };
         let (a, b, c) = abc.parts();
+        assert_eq!(a, "hi");
+        assert_eq!(b, 7);
+        assert_eq!(c.len(), 1);
+    }
+
+    #[test]
+    fn parts_trait() {
+        fn split<T: crate::Parts>(value: T) -> T::Owned {
+            value.parts()
+        }
+
+        let abc = Abc {
+            a: "hi".to_string(),
+            b: 7,
+            c: vec![()],
+        };
+        let (a, b, c) = split(abc);
         assert_eq!(a, "hi");
         assert_eq!(b, 7);
         assert_eq!(c.len(), 1);
