@@ -171,3 +171,7 @@ let (a,b,c) = abc.parts();
 ```
 
 Both methods of parts and parts_ref marcked as must_use.
+
+## See also
+
+https://github.com/HalsekiRaika/destructure
