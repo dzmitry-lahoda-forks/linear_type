@@ -1,0 +1,11 @@
+[package]
+name = "lineart_lint"
+version = "0.8.0"
+edition = "2024"
+authors = ["Christian Thäter <ct@pipapo.org>"]
+description = "Linear types for rust"
+license = "MIT OR Apache-2.0"
+repository = "https://git.pipapo.org/cehteh/linear_type.git"
+keywords = ["typesystem", "cell", "lineartype", "undropable", "nodrop", "dropbomb", "typelevel"]
+categories = ["rust-patterns"]
+rust-version = "1.85.0"

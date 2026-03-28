@@ -1,4 +1,4 @@
-error: parts! impl must not target #[non_exhaustive] types
+error: macro impl must not target #[non_exhaustive] types
   --> tests/compile_fail/parts_non_exhaustive.rs:7:1
    |
  7 | / parts! {
@@ -9,4 +9,4 @@ error: parts! impl must not target #[non_exhaustive] types
 12 | | }
    | |_^
    |
-   = note: this error originates in the macro `$crate::__deny_non_exhaustive` which comes from the expansion of the macro `parts` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::deny_non_exhaustive` which comes from the expansion of the macro `parts` (in Nightly builds, run with -Z macro-backtrace for more info)

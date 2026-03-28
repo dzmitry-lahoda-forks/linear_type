@@ -1,5 +1,10 @@
 #![doc = include_str!("../../../README.md")]
 
+/// Helpers for exhaustive field access via [`Parts`] and the [`parts!`] macro.
+#[macro_use]
+pub mod parts;
+pub use parts::Parts;
+
 use core::mem::ManuallyDrop;
 
 /// Linearity holder. Carries the unique type marker and ensures a linear value is not dropped.
@@ -44,92 +49,19 @@ pub const fn __linear_from_parts<T, U>(value: T) -> Linear<T, U> {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __deny_non_exhaustive {
+macro_rules! deny_non_exhaustive {
     () => {};
     (#[non_exhaustive] $($rest:tt)*) => {
-        ::core::compile_error!("parts! impl must not target #[non_exhaustive] types");
+        ::core::compile_error!("macro impl must not target #[non_exhaustive] types");
     };
     (#[non_exhaustive = $($t:tt)*] $($rest:tt)*) => {
-        ::core::compile_error!("parts! impl must not target #[non_exhaustive] types");
+        ::core::compile_error!("macro impl must not target #[non_exhaustive] types");
     };
     (#[non_exhaustive($($t:tt)*)] $($rest:tt)*) => {
-        ::core::compile_error!("parts! impl must not target #[non_exhaustive] types");
+        ::core::compile_error!("macro impl must not target #[non_exhaustive] types");
     };
-    (#[$_other:tt] $($rest:tt)*) => {
-        $crate::__deny_non_exhaustive!($($rest)*);
-    };
-}
-
-macro_rules! force_parts {
-    () => {
-        #[forbid(unused_variables)]
-        #[forbid(clippy::rest_pat_in_fully_bound_structs)]
-        #[forbid(clippy::unneeded_wildcard_pattern)]
-        #[forbid(let_underscore_drop)]
-    };
-}
-
-/// Generates `parts()` and `parts_ref()` methods for a struct to access all fields.
-pub trait Parts {
-    /// Tuple of owned fields returned by `parts(self)`.
-    type Owned;
-
-    /// Tuple of borrowed fields returned by `parts_ref(&self)`.
-    type Ref<'a>
-    where
-        Self: 'a;
-
-    /// Destructure the type into all of its fields.
-    fn parts(self) -> Self::Owned;
-
-    /// Borrow all fields at once.
-    fn parts_ref(&self) -> Self::Ref<'_>;
-}
-
-/// Generates a `Parts` impl and inherent `parts()` / `parts_ref()` methods for a struct.
-#[macro_export]
-macro_rules! parts {
-    (
-        $(#[$meta:tt])*
-        impl $(<$($impl_generics:tt),*>)?
-        $name:ident $(<$($ty_generics:tt),*>)?
-        $(where $($where_clause:tt)+)?
-        {
-            $($field:ident : $fty:ty),+ $(,)?
-        }
-    ) => {
-        $crate::__deny_non_exhaustive!($(#[$meta])*);
-        impl $(<$($impl_generics),*>)? $crate::Parts for $name $(<$($ty_generics),*>)?
-        $(where $($where_clause)+)?
-        {
-            type Owned = ($($fty),+,);
-
-            type Ref<'__parts> = ($(&'__parts $fty),+,)
-            where
-                Self: '__parts;
-
-            fn parts(self) -> Self::Owned {
-                ($(self.$field),+,)
-            }
-
-            fn parts_ref(&self) -> Self::Ref<'_> {
-                ($(&self.$field),+,)
-            }
-        }
-
-        impl $(<$($impl_generics),*>)? $name $(<$($ty_generics),*>)?
-        $(where $($where_clause)+)?
-        {
-            #[must_use]
-            pub fn parts(self) -> <Self as $crate::Parts>::Owned {
-                <Self as $crate::Parts>::parts(self)
-            }
-
-            #[must_use]
-            pub fn parts_ref(&self) -> <Self as $crate::Parts>::Ref<'_> {
-                <Self as $crate::Parts>::parts_ref(self)
-            }
-        }
+    (#[$($_other:tt)*] $($rest:tt)*) => {
+        $crate::deny_non_exhaustive!($($rest)*);
     };
 }
 
@@ -138,10 +70,11 @@ macro_rules! parts {
 #[macro_export]
 macro_rules! linear {
     (
-        $(#[$meta:meta])*
+        $(#[$($meta:tt)*])*
         $vis:vis struct $name:ident<$t:ident, $u:ident>($inner:ty);
     ) => {
-        $(#[$meta])*
+        $crate::deny_non_exhaustive!($(#[$($meta)*])*);
+        $(#[$($meta)*])*
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         #[must_use]
         $vis struct $name<$t, $u>(
@@ -388,10 +321,11 @@ macro_rules! linear {
         }
     };
     (
-        $(#[$meta:meta])*
+        $(#[$($meta:tt)*])*
         $vis:vis struct $name:ident($inner:ty);
     ) => {
-        $(#[$meta])*
+        $crate::deny_non_exhaustive!($(#[$($meta)*])*);
+        $(#[$($meta)*])*
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         #[must_use]
         $vis struct $name(
@@ -466,10 +400,11 @@ macro_rules! linear {
         // No Result/Option extensions for the fully concrete variant.
     };
     (
-        $(#[$meta:meta])*
+        $(#[$($meta:tt)*])*
         $vis:vis struct $name:ident<$t:ident>($inner:ty);
     ) => {
-        $(#[$meta])*
+        $crate::deny_non_exhaustive!($(#[$($meta)*])*);
+        $(#[$($meta)*])*
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         #[must_use]
         $vis struct $name<$t>(

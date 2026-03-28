@@ -36,6 +36,17 @@ linear!(pub struct LinearResult(String););
 This generates the full linear wrapper implementation, including `map`, `into`, and the
 `Result`/`Option` extensions.
 
+`linear!` also rejects `#[non_exhaustive]` targets:
+
+```compile_fail
+use linear_type::linear;
+
+linear! {
+  #[non_exhaustive]
+  pub struct LinearResult(String);
+}
+```
+
 
 ## Status
 
@@ -172,6 +183,19 @@ let (a,b,c) = abc.parts();
 
 Both methods of parts and parts_ref marcked as must_use.
 
-## See also
+`parts!` also rejects `#[non_exhaustive]` targets:
 
-https://github.com/HalsekiRaika/destructure
+```compile_fail
+use linear_type::parts;
+
+struct Abc {
+  a: String,
+}
+
+parts! {
+  #[non_exhaustive]
+  impl Abc {
+    a: String,
+  }
+}
+```
