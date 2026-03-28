@@ -1,7 +1,7 @@
 // this is the example from the README.md
-//! This example demonstrates how to use the `linear_type` crate to model a linear state machine
+//! This example demonstrates how to use the `linear_ty` crate to model a linear state machine
 //! that reads the content of a file.
-use linear_type::new_linear;
+use linear_ty::new_linear;
 use std::fs::File;
 use std::io::{Read, Result};
 

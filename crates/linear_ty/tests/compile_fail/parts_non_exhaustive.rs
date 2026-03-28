@@ -1,4 +1,4 @@
-use linear_type::parts;
+use linear_ty::parts;
 
 struct Abc {
     a: String,

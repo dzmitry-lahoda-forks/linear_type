@@ -1,6 +1,6 @@
 # Important
 
-Fork of [linear_type](https://seed.pipapo.org/nodes/seed.pipapo.org/rad:z2HSXU1YYpbzTLp4LWXXL9j19rSnw) and all credit goes to author of it.
+Fork of `linear_type` and all credit goes to author of it.
 
 Not sure I ready to use radicle this time. Hope author will examine changes and incorporate some.
 
@@ -28,7 +28,7 @@ eventually deconstructed and consumed.
 ## linear! macro
 
 ```rust
-use linear_type::linear;
+use linear_ty::linear;
 
 linear!(pub struct LinearResult(String););
 ```
@@ -39,7 +39,7 @@ This generates the full linear wrapper implementation, including `map`, `into`, 
 `linear!` also rejects `#[non_exhaustive]` targets:
 
 ```compile_fail
-use linear_type::linear;
+use linear_ty::linear;
 
 linear! {
   #[non_exhaustive]
@@ -80,7 +80,7 @@ While any type can be wraped in a `Linear<T>`, it is recommended to use it with 
 which transitioning into a final state. The state transitions can be functions or closures.
 
 ```rust
-use linear_type::*;
+use linear_ty::*;
 use std::fs::File;
 use std::io::{Read, Result};
 use std::path::PathBuf;
@@ -155,7 +155,7 @@ Also field setters could be private.
 so `parts!` macro allows to access all fileds like:
 
 ```rust
-use linear_type::parts;
+use linear_ty::parts;
 
 struct Abc {
   a: String,
@@ -186,7 +186,7 @@ Both methods of parts and parts_ref marcked as must_use.
 `parts!` also rejects `#[non_exhaustive]` targets:
 
 ```compile_fail
-use linear_type::parts;
+use linear_ty::parts;
 
 struct Abc {
   a: String,

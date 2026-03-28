@@ -1,5 +1,5 @@
 [package]
-name = "linear_type"
+name = "linear_ty"
 version = "0.8.0"
 edition = "2024"
 authors = ["Christian Thäter <ct@pipapo.org>"]

@@ -126,7 +126,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let linear = new_linear!(123);
             /// # #[cfg(any(doc, feature = "semipure"))]
             /// assert_eq!(linear.get_ref(), &123);
@@ -142,7 +142,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let linear = new_linear!(123);
             /// let inner = linear.into();
             /// assert_eq!(inner, 123);
@@ -159,7 +159,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let linear = new_linear!(123);
             /// linear.destroy();
             /// ```
@@ -178,7 +178,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let number = new_linear!(123);
             /// let string = number.map(|x| x.to_string());
             /// assert_eq!(string.into(), "123");
@@ -203,11 +203,11 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # use std::io::Read;
             /// let result = new_linear!(std::fs::File::open("Cargo.toml"));
             /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
-            /// assert!(mapped.unwrap_ok().into().contains("linear_type"));
+            /// assert!(mapped.unwrap_ok().into().contains("linear_ty"));
             /// ```
             pub fn map_ok<F: FnOnce($t) -> ::core::result::Result<R, E>, R>(
                 self,
@@ -265,7 +265,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let option = new_linear!(Some(123));
             /// let mapped = option.map_some(|x| Some(x.to_string()));
             /// assert_eq!(mapped.unwrap_some().into(), "123");
@@ -286,7 +286,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let option = new_linear!(None);
             /// let mapped = option.or_else(|| Some(123));
             /// assert_eq!(mapped.unwrap_some().into(), 123);
@@ -310,7 +310,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// let option = new_linear!(Some(123));
             /// let unwrapped = option.unwrap_some();
             /// assert_eq!(unwrapped.into(), 123);
@@ -452,7 +452,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let linear = Example::new(123);
             /// # #[cfg(any(doc, feature = "semipure"))]
@@ -469,7 +469,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let linear = Example::new(123);
             /// let inner = linear.into();
@@ -487,7 +487,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let linear = Example::new(123);
             /// linear.destroy();
@@ -507,7 +507,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let number = Example::new(123);
             /// let string = number.map(|x| x.to_string());
@@ -533,12 +533,12 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # use std::io::Read;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let result = Example::new(std::fs::File::open("Cargo.toml"));
             /// let mapped = result.map_ok(|mut file| { let mut s = String::new(); file.read_to_string(&mut s)?; Ok(s)});
-            /// assert!(mapped.unwrap_ok().into().contains("linear_type"));
+            /// assert!(mapped.unwrap_ok().into().contains("linear_ty"));
             /// ```
             pub fn map_ok<F: FnOnce($t) -> ::core::result::Result<R, E>, R>(
                 self,
@@ -596,7 +596,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let option = Example::new(Some(123));
             /// let mapped = option.map_some(|x| Some(x.to_string()));
@@ -618,7 +618,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let option = Example::new(None);
             /// let mapped = option.or_else(|| Some(123));
@@ -643,7 +643,7 @@ macro_rules! linear {
             /// # Example
             ///
             /// ```rust
-            /// # use linear_type::*;
+            /// # use linear_ty::*;
             /// # linear! { pub struct Example<T>(T, UniqueType<fn()>); }
             /// let option = Example::new(Some(123));
             /// let unwrapped = option.unwrap_some();
@@ -693,7 +693,7 @@ macro_rules! unique {
 /// Wraps a value of type `T` in `Linear<T>`. This macro ensures that every new instance has a
 /// unique type.
 /// ```compile_fail
-/// use linear_type::new_linear;
+/// use linear_ty::new_linear;
 ///
 /// // This must not compile because `foo` and `bar` are distinct types.
 /// let foo = new_linear!("test");

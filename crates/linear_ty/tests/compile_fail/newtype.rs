@@ -1,4 +1,4 @@
-use linear_type::{linear, unique};
+use linear_ty::{linear, unique};
 
 linear! {
     /// Custom linear wrapper that holds a `String`.

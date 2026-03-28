@@ -1,4 +1,4 @@
-use linear_type::linear;
+use linear_ty::linear;
 
 linear! {
     #[non_exhaustive]
